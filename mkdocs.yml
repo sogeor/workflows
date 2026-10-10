@@ -63,3 +63,6 @@ nav:
       - Overview: adr/index.md
       - "0001 Record architecture decisions": adr/0001-record-architecture-decisions.md
       - "0002 Versioning and pinning": adr/0002-versioning-and-pinning.md
+      - "0003 Environment-scoped credentials": adr/0003-environment-scoped-credentials.md
+      - "0004 Mesh access for CI": adr/0004-mesh-access-for-ci.md
+      - "0005 Actions from the same commit": adr/0005-shared-actions-from-the-same-commit.md

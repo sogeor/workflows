@@ -4,9 +4,7 @@ Horizon: through Q4 2027. Order follows the sogeor platform plan.
 
 ## Planned
 
-- `v0.1.0`: reusable `docs`, `security-lite`, `scorecard` workflows and `self-test`.
-- `v0.2.0`: `tofu-gitlab-state`, `packer-build`, `mirror-to-gitlab` workflows;
-  `setup-tofu-http-backend`, `setup-mesh` (WireGuard), `pr-comment` actions.
+- `v0.1.0`: scanning workflows; `v0.2.0`: infrastructure workflows and actions.
 - `images` switches to `packer-build` and `setup-mesh`.
 - `ansible-lint` and `gitops-validate` workflows, once the `ansible` and `platform` repositories exist.
 - `setup-mesh` Tailscale mode against Headscale; WireGuard mode removed afterwards.

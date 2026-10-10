@@ -1,0 +1,33 @@
+name: setup-tofu-http-backend
+description: Configure the OpenTofu http backend for GitLab-managed state.
+
+inputs:
+  project-id:
+    description: Numeric ID of the GitLab project that stores the state.
+    required: true
+  state-name:
+    description: State name; letters, digits, dot, dash and underscore.
+    required: true
+  username:
+    description: GitLab user name that owns the token.
+    required: true
+  token:
+    description: GitLab token with the api scope and at least the Maintainer role in the project.
+    required: true
+  gitlab-url:
+    description: Base URL of the GitLab instance.
+    required: false
+    default: https://gitlab.com
+
+runs:
+  using: composite
+  steps:
+    - name: Configure backend
+      shell: bash
+      env:
+        PROJECT_ID: ${{ inputs.project-id }}
+        STATE_NAME: ${{ inputs.state-name }}
+        GITLAB_USERNAME: ${{ inputs.username }}
+        GITLAB_TOKEN: ${{ inputs.token }}
+        GITLAB_URL: ${{ inputs.gitlab-url }}
+      run: '"$GITHUB_ACTION_PATH/setup-tofu-http-backend.sh"'

@@ -1,0 +1,51 @@
+name: setup-mesh
+description: Connect the runner to the private network of the platform.
+
+inputs:
+  mode:
+    description: "Connection mode: wireguard; tailscale is not implemented yet."
+    required: true
+  wg-private-key:
+    description: WireGuard private key of the runner.
+    required: false
+    default: ""
+  wg-server-public-key:
+    description: WireGuard public key of the hub.
+    required: false
+    default: ""
+  wg-endpoint:
+    description: WireGuard hub endpoint, host:port.
+    required: false
+    default: ""
+  wg-address:
+    description: Address of the runner in the WireGuard network, CIDR.
+    required: false
+    default: ""
+  wg-allowed-ips:
+    description: Comma-separated networks routed through the hub.
+    required: false
+    default: ""
+  check-address:
+    description: host:port that must accept TCP connections once connected; empty skips the check.
+    required: false
+    default: ""
+  check-timeout:
+    description: Seconds to wait for check-address.
+    required: false
+    default: "60"
+
+runs:
+  using: composite
+  steps:
+    - name: Connect
+      shell: bash
+      env:
+        MODE: ${{ inputs.mode }}
+        WG_PRIVATE_KEY: ${{ inputs.wg-private-key }}
+        WG_SERVER_PUBLIC_KEY: ${{ inputs.wg-server-public-key }}
+        WG_ENDPOINT: ${{ inputs.wg-endpoint }}
+        WG_ADDRESS: ${{ inputs.wg-address }}
+        WG_ALLOWED_IPS: ${{ inputs.wg-allowed-ips }}
+        CHECK_ADDRESS: ${{ inputs.check-address }}
+        CHECK_TIMEOUT: ${{ inputs.check-timeout }}
+      run: '"$GITHUB_ACTION_PATH/setup-mesh.sh"'

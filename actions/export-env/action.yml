@@ -1,0 +1,32 @@
+name: export-env
+description: Export selected configuration variables and secrets to the job environment.
+
+inputs:
+  vars-json:
+    description: "JSON object of variables, usually toJSON(vars)."
+    required: false
+    default: "{}"
+  secrets-json:
+    description: "JSON object of secrets, usually toJSON(secrets)."
+    required: false
+    default: "{}"
+  vars:
+    description: Space- or newline-separated variable names to export; single-line values are trimmed.
+    required: false
+    default: ""
+  secrets:
+    description: Space- or newline-separated secret names to export; values are masked.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Export
+      shell: bash
+      env:
+        VARS_JSON: ${{ inputs.vars-json }}
+        SECRETS_JSON: ${{ inputs.secrets-json }}
+        VAR_NAMES: ${{ inputs.vars }}
+        SECRET_NAMES: ${{ inputs.secrets }}
+      run: '"$GITHUB_ACTION_PATH/export-env.sh"'

@@ -42,3 +42,61 @@ jobs:
     with:
       publish-results: false
       upload-sarif: false
+
+  actions:
+    name: actions
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: export-env
+        uses: ./actions/export-env
+        with:
+          vars-json: '{"PLAIN": "  value \t", "PEM": "line1\nline2"}'
+          secrets-json: '{"TOKEN": "fixture-secret"}'
+          vars: PLAIN PEM
+          secrets: TOKEN
+
+      - name: Check export-env
+        run: |
+          set -euo pipefail
+          test "$PLAIN" = value
+          test "$PEM" = "$(printf 'line1\nline2')"
+          test "$TOKEN" = fixture-secret
+
+      - name: setup-tofu-http-backend
+        uses: ./actions/setup-tofu-http-backend
+        with:
+          project-id: "12345"
+          state-name: fixture
+          username: fixture-user
+          token: fixture-token
+
+      - name: Check setup-tofu-http-backend
+        run: |
+          set -euo pipefail
+          test "$TF_HTTP_ADDRESS" = https://gitlab.com/api/v4/projects/12345/terraform/state/fixture
+          test "$TF_HTTP_LOCK_ADDRESS" = "${TF_HTTP_ADDRESS}/lock"
+          test "$TF_HTTP_UNLOCK_METHOD" = DELETE
+          test "$TF_HTTP_PASSWORD" = fixture-token
+
+      - name: setup-mesh rejects an unknown mode
+        id: mesh
+        continue-on-error: true
+        uses: ./actions/setup-mesh
+        with:
+          mode: fixture
+
+      - name: Check setup-mesh
+        env:
+          OUTCOME: ${{ steps.mesh.outcome }}
+        run: test "$OUTCOME" = failure
+
+      - name: pr-comment skips outside pull requests
+        if: github.event_name != 'pull_request'
+        uses: ./actions/pr-comment
+        with:
+          marker: self-test
+          body-file: README.md

@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- Reusable workflows: `packer-build`, `tofu-gitlab-state` (plan with PR comment and Conftest, apply from the
+  default branch), `mirror-to-gitlab`.
+- Composite actions: `export-env`, `setup-mesh` (WireGuard), `setup-tofu-http-backend`, `pr-comment`.
+- `self-test` job `actions` exercises the composite actions on fixtures.
+- ADR 0003–0005.
 - Reusable workflows: `docs` (markdownlint, lychee, MkDocs), `security-lite` (gitleaks, Trivy, Semgrep, Checkov,
   SARIF upload), `scorecard` (OpenSSF Scorecard with optional publishing).
 - `self-test` calls every reusable workflow on this repository; `repo-scorecard` publishes this repository's Scorecard.

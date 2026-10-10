@@ -39,6 +39,17 @@ For private repositories of the same organization select
 Dependabot alerts — on; Dependabot security and version updates — off (Renovate is used);
 Secret Protection and Push protection — on; CodeQL analysis — **Default setup** with language `actions`.
 
+## Environments for callers
+
+Infrastructure workflows read credentials from an Environment of the **caller** repository.
+
+1. **Settings → Environments → New environment**, name as passed in `environment` (for example `images`).
+2. **Deployment branches and tags → Selected branches and tags → Add deployment branch or tag rule**: `master`.
+   A read-only plan Environment (for example `mgmt-plan`) may allow all branches.
+3. **Environment secrets → Add environment secret** and **Environment variables → Add environment variable**
+   for every name in [Configuration](configuration.md#infrastructure-workflows-common-rules). Values without
+   leading or trailing whitespace.
+
 ## Renovate
 
 Install the Renovate GitHub App for this repository (**Only select repositories**). The configuration is in `renovate.json`.

@@ -82,3 +82,145 @@ jobs:
 ```
 
 Badge: `https://api.scorecard.dev/projects/github.com/<owner>/<repo>/badge`.
+
+## Packer build (Proxmox over WireGuard)
+
+```yaml
+name: build
+
+on:
+  schedule:
+    - cron: "0 3 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: packer-build-proxmox
+  cancel-in-progress: false
+
+jobs:
+  base:
+    uses: sogeor/workflows/.github/workflows/packer-build.yml@<sha> # vX.Y.Z
+    secrets: inherit
+    with:
+      environment: images
+      image: ubuntu-2404-base
+      install-command: tools/ci-install.sh
+      ca-pem-var: PROXMOX_CA_PEM
+      mesh: wireguard
+      manifest-file: manifest/ubuntu-2404-base.json
+      manifest-query: .builds[-1].custom_data.template_name
+
+  k8s:
+    needs: base
+    uses: sogeor/workflows/.github/workflows/packer-build.yml@<sha> # vX.Y.Z
+    secrets: inherit
+    with:
+      environment: images
+      image: ubuntu-2404-k8s
+      install-command: tools/ci-install.sh
+      ca-pem-var: PROXMOX_CA_PEM
+      mesh: wireguard
+      packer-vars: |
+        base_template=${{ needs.base.outputs.result }}
+      manifest-file: manifest/ubuntu-2404-k8s.json
+      manifest-query: .builds[-1].custom_data.template_name
+```
+
+## OpenTofu plan and apply
+
+```yaml
+name: mgmt
+
+on:
+  pull_request:
+    paths: [live/mgmt/**]
+  push:
+    branches: [master]
+    paths: [live/mgmt/**]
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    if: github.event_name == 'pull_request'
+    uses: sogeor/workflows/.github/workflows/tofu-gitlab-state.yml@<sha> # vX.Y.Z
+    secrets: inherit
+    permissions:
+      contents: read
+      pull-requests: write
+    with:
+      command: plan
+      working-directory: live/mgmt
+      state-name: mgmt
+      environment: mgmt-plan
+      conftest-policy: policies/conftest
+      env-secrets: TF_VAR_PROXMOX_API_TOKEN
+      mesh: wireguard
+
+  apply:
+    if: github.event_name == 'push'
+    uses: sogeor/workflows/.github/workflows/tofu-gitlab-state.yml@<sha> # vX.Y.Z
+    secrets: inherit
+    permissions:
+      contents: read
+      pull-requests: write
+    with:
+      command: apply
+      working-directory: live/mgmt
+      state-name: mgmt
+      environment: mgmt
+      conftest-policy: policies/conftest
+      env-secrets: TF_VAR_PROXMOX_API_TOKEN
+      mesh: wireguard
+```
+
+Secret names are upper case in GitHub; declare matching OpenTofu variables in upper case
+(`variable "PROXMOX_API_TOKEN"`) or map them in `locals`.
+
+Pull requests from forks get no Environment secrets: run `plan` only for branches of the same repository
+(`github.event.pull_request.head.repo.full_name == github.repository`).
+
+## Mirror to GitLab
+
+```yaml
+name: mirror
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["**"]
+  delete:
+
+permissions:
+  contents: read
+
+jobs:
+  mirror:
+    uses: sogeor/workflows/.github/workflows/mirror-to-gitlab.yml@<sha> # vX.Y.Z
+    secrets: inherit
+    with:
+      environment: mirror
+      mesh: wireguard
+```
+
+The `mirror` Environment needs no branch restriction for branch pushes; restrict it to the default branch
+if only `master` and tags should be mirrored (and trigger on them only).
+
+## Actions in your own jobs
+
+```yaml
+steps:
+  - uses: sogeor/workflows/actions/setup-mesh@<sha> # vX.Y.Z
+    with:
+      mode: wireguard
+      wg-private-key: ${{ secrets.WG_RUNNER_PRIVATE_KEY }}
+      wg-server-public-key: ${{ vars.WG_SERVER_PUBLIC_KEY }}
+      wg-endpoint: ${{ vars.WG_ENDPOINT }}
+      wg-address: ${{ vars.WG_ADDRESS }}
+      wg-allowed-ips: ${{ vars.WG_ALLOWED_IPS }}
+      check-address: ${{ vars.MESH_CHECK_ADDRESS }}
+```

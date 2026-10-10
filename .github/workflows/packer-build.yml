@@ -1,0 +1,223 @@
+name: packer-build
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: GitHub Environment with the build variables and secrets.
+        type: string
+        required: true
+      image:
+        description: Image name passed as the last argument of build-command.
+        type: string
+        required: true
+      build-command:
+        description: Build command in the caller repository; the image name is appended.
+        type: string
+        default: tools/packer.sh build
+      install-command:
+        description: Optional command in the caller repository that installs extra tools.
+        type: string
+        default: ""
+      packer-version:
+        description: Packer version.
+        type: string
+        default: "1.16.1"
+      build-version:
+        description: Value of PKR_VAR_build_version; empty means <run_number>-<run_attempt>.
+        type: string
+        default: ""
+      packer-vars:
+        description: Extra Packer variables, one NAME=value per line, exported as PKR_VAR_NAME.
+        type: string
+        default: ""
+      env-vars:
+        description: Names of Environment variables exported to the build.
+        type: string
+        default: PROXMOX_URL PROXMOX_USERNAME
+      env-secrets:
+        description: Names of Environment secrets exported to the build.
+        type: string
+        default: PROXMOX_TOKEN
+      ca-pem-var:
+        description: Name of an Environment variable with a PEM CA certificate to trust; empty skips.
+        type: string
+        default: ""
+      mesh:
+        description: "Network access: none or wireguard."
+        type: string
+        default: none
+      manifest-file:
+        description: Packer manifest file read after the build; empty skips.
+        type: string
+        default: ""
+      manifest-query:
+        description: jq query over the manifest; its result becomes the output result.
+        type: string
+        default: .builds[-1].artifact_id
+      artifact-name:
+        description: Name of the uploaded artifact; empty means reports-<image>.
+        type: string
+        default: ""
+      artifact-paths:
+        description: Paths uploaded after the build, one per line.
+        type: string
+        default: |
+          reports/
+          manifest/
+      artifact-retention-days:
+        description: Retention of the uploaded artifact in days.
+        type: number
+        default: 90
+      timeout-minutes:
+        description: Timeout of the build job.
+        type: number
+        default: 90
+      debug:
+        description: Set PACKER_LOG=1.
+        type: boolean
+        default: false
+      require-default-branch:
+        description: Fail unless the run is on the default branch.
+        type: boolean
+        default: true
+    outputs:
+      result:
+        description: Result of manifest-query, for example the template or image name.
+        value: ${{ jobs.build.outputs.result }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build ${{ inputs.image }}
+    runs-on: ubuntu-24.04
+    environment: ${{ inputs.environment }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    outputs:
+      result: ${{ steps.manifest.outputs.result }}
+    steps:
+      - name: Check branch
+        if: inputs.require-default-branch
+        env:
+          REF: ${{ github.ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          if [[ "$REF" != "refs/heads/${DEFAULT_BRANCH}" ]]; then
+            echo "::error::Builds run only from ${DEFAULT_BRANCH}; got ${REF}."
+            exit 1
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Locate shared actions
+        id: self
+        env:
+          WORKFLOW_REF: ${{ job.workflow_ref }}
+        run: echo "repository=${WORKFLOW_REF%%/.github/workflows/*}" >>"$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ steps.self.outputs.repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .shared-workflows
+          persist-credentials: false
+
+      - uses: hashicorp/setup-packer@ce93c3c08a6c2ff2275bf4b54ff0d9a75f6c9789 # v3.4.0
+        with:
+          version: ${{ inputs.packer-version }}
+
+      - name: Export environment
+        uses: ./.shared-workflows/actions/export-env
+        with:
+          vars-json: ${{ toJSON(vars) }}
+          secrets-json: ${{ toJSON(secrets) }} # zizmor: ignore[overprovisioned-secrets]
+          vars: ${{ inputs.env-vars }}
+          secrets: ${{ inputs.env-secrets }}
+
+      - name: Trust CA
+        if: inputs.ca-pem-var != ''
+        env:
+          CA_PEM: ${{ vars[inputs.ca-pem-var] }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$CA_PEM" ]]; then
+            echo "::error::The CA variable is empty."
+            exit 1
+          fi
+          printf '%s\n' "$CA_PEM" | sudo tee /usr/local/share/ca-certificates/build-ca.crt >/dev/null
+          sudo update-ca-certificates >/dev/null
+
+      - name: Connect mesh
+        if: inputs.mesh != 'none'
+        uses: ./.shared-workflows/actions/setup-mesh
+        with:
+          mode: ${{ inputs.mesh }}
+          wg-private-key: ${{ secrets.WG_RUNNER_PRIVATE_KEY }}
+          wg-server-public-key: ${{ vars.WG_SERVER_PUBLIC_KEY }}
+          wg-endpoint: ${{ vars.WG_ENDPOINT }}
+          wg-address: ${{ vars.WG_ADDRESS }}
+          wg-allowed-ips: ${{ vars.WG_ALLOWED_IPS }}
+          check-address: ${{ vars.MESH_CHECK_ADDRESS }}
+
+      - name: Install tools
+        if: inputs.install-command != ''
+        env:
+          INSTALL_COMMAND: ${{ inputs.install-command }}
+        run: $INSTALL_COMMAND
+
+      - name: Packer variables
+        env:
+          PACKER_VARS: ${{ inputs.packer-vars }}
+          BUILD_VERSION: ${{ inputs.build-version || format('{0}-{1}', github.run_number, github.run_attempt) }}
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          {
+            echo "PKR_VAR_build_version=${BUILD_VERSION}"
+            echo "PKR_VAR_git_sha=${GIT_SHA}"
+          } >>"$GITHUB_ENV"
+          while IFS= read -r line; do
+            [[ -z "$line" ]] && continue
+            name="${line%%=*}"
+            if [[ ! "$name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ || "$line" != *=* ]]; then
+              echo "::error::Invalid packer-vars line for ${name}."
+              exit 1
+            fi
+            echo "PKR_VAR_${name}=${line#*=}" >>"$GITHUB_ENV"
+          done <<<"$PACKER_VARS"
+
+      - name: packer build
+        env:
+          BUILD_COMMAND: ${{ inputs.build-command }}
+          IMAGE: ${{ inputs.image }}
+          PACKER_GITHUB_API_TOKEN: ${{ github.token }}
+          PACKER_LOG: ${{ inputs.debug && '1' || '' }}
+        run: $BUILD_COMMAND "$IMAGE"
+
+      - name: Read manifest
+        id: manifest
+        if: inputs.manifest-file != ''
+        env:
+          MANIFEST: ${{ inputs.manifest-file }}
+          QUERY: ${{ inputs.manifest-query }}
+        run: |
+          set -euo pipefail
+          result="$(jq -r "$QUERY" "$MANIFEST")"
+          if [[ -z "$result" || "$result" == null || "$result" == *$'\n'* ]]; then
+            echo "::error::manifest-query must return one non-empty value."
+            exit 1
+          fi
+          echo "result=${result}" >>"$GITHUB_OUTPUT"
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ inputs.artifact-name || format('reports-{0}', inputs.image) }}
+          path: ${{ inputs.artifact-paths }}
+          if-no-files-found: warn
+          retention-days: ${{ inputs.artifact-retention-days }}
