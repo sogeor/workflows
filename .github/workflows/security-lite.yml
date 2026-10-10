@@ -165,7 +165,7 @@ jobs:
           FRAMEWORKS: ${{ inputs.checkov-frameworks }}
         run: |
           set -euo pipefail
-          args=(-d /src --output cli --output sarif --output-file-path console,/src)
+          args=(-d /src --output cli --output sarif --output-file-path "console,/src")
           if [ -n "$FRAMEWORKS" ]; then
             args+=(--framework "$FRAMEWORKS")
           fi
