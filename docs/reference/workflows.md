@@ -25,5 +25,5 @@
 | Workflow | Trigger | Jobs | Purpose |
 |---|---|---|---|
 | `validate.yml` | push to `master`, pull request, manual | `linters` | shellcheck, yamllint, actionlint, zizmor, gitleaks |
-| `self-test.yml` | push to `master`, pull request, manual | `docs / docs`, `security-lite / *`, `scorecard / Scorecard analysis`, `actions` | Calls the scanning workflows on this repository; tests actions on fixtures |
+| `self-test.yml` | push to `master`, pull request, manual | `docs / docs`, `security-lite / *`, `scorecard / Scorecard analysis`, `actions` | Calls the scanning workflows on this repository; tests actions: expected values and rejection of invalid input |
 | `repo-scorecard.yml` | push to `master`, weekly, ruleset change | `scorecard / Scorecard analysis` | Published Scorecard results of this repository |

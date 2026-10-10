@@ -92,10 +92,92 @@ jobs:
         with:
           mode: fixture
 
-      - name: Check setup-mesh
+      - name: export-env rejects a malformed line
+        id: dotenv-malformed
+        continue-on-error: true
+        uses: ./actions/export-env
+        with:
+          dotenv: NO_EQUALS_SIGN
+
+      - name: export-env rejects a reserved name
+        id: dotenv-reserved
+        continue-on-error: true
+        uses: ./actions/export-env
+        with:
+          dotenv: GITHUB_TOKEN=fixture
+
+      - name: export-env rejects an empty value
+        id: dotenv-empty
+        continue-on-error: true
+        uses: ./actions/export-env
+        with:
+          dotenv: EMPTY=
+
+      - name: export-env rejects a missing variable
+        id: vars-missing
+        continue-on-error: true
+        uses: ./actions/export-env
+        with:
+          vars: MISSING
+
+      - name: setup-tofu-http-backend rejects a non-numeric project
+        id: backend-project
+        continue-on-error: true
+        uses: ./actions/setup-tofu-http-backend
+        with:
+          project-id: group/project
+          state-name: fixture
+          username: fixture-user
+          token: fixture-token
+
+      - name: setup-tofu-http-backend rejects plain http
+        id: backend-http
+        continue-on-error: true
+        uses: ./actions/setup-tofu-http-backend
+        with:
+          project-id: "12345"
+          state-name: fixture
+          username: fixture-user
+          token: fixture-token
+          gitlab-url: http://gitlab.example.com
+
+      - name: setup-mesh requires WireGuard settings
+        id: mesh-settings
+        continue-on-error: true
+        uses: ./actions/setup-mesh
+        with:
+          mode: wireguard
+
+      - name: pr-comment rejects an invalid marker
+        id: comment-marker
+        continue-on-error: true
+        uses: ./actions/pr-comment
+        with:
+          marker: "bad marker"
+          body-file: README.md
+          pr-number: "1"
+
+      - name: Check rejections
         env:
-          OUTCOME: ${{ steps.mesh.outcome }}
-        run: test "$OUTCOME" = failure
+          OUTCOMES: >-
+            ${{ steps.mesh.outcome }}
+            ${{ steps.dotenv-malformed.outcome }}
+            ${{ steps.dotenv-reserved.outcome }}
+            ${{ steps.dotenv-empty.outcome }}
+            ${{ steps.vars-missing.outcome }}
+            ${{ steps.backend-project.outcome }}
+            ${{ steps.backend-http.outcome }}
+            ${{ steps.mesh-settings.outcome }}
+            ${{ steps.comment-marker.outcome }}
+        run: |
+          set -euo pipefail
+          for outcome in $OUTCOMES; do
+            if [[ "$outcome" != failure ]]; then
+              echo "::error::Expected every negative case to fail; got: ${OUTCOMES}"
+              exit 1
+            fi
+          done
+          echo "all negative cases rejected"
 
       - name: pr-comment skips outside pull requests
         if: github.event_name != 'pull_request'

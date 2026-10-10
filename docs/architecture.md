@@ -5,7 +5,6 @@
 ```text
 .github/workflows/   reusable workflows (on: workflow_call) and this repository's own CI
 actions/<name>/      composite actions (action.yml)
-tests/fixtures/      inputs for self-test
 docs/                documentation
 ```
 
