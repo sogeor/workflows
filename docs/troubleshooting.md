@@ -32,11 +32,21 @@
 - **Cause:** actionlint 1.7.12 does not know `job.workflow_ref` and `job.workflow_sha`.
 - **Fix:** ignored in `.github/actionlint.yaml`; remove the rule when actionlint supports them.
 
-## `The secret NAME is not available to this job`
+## `The variable NAME is not available to this job`
 
-- **Cause:** the name is listed in `env-secrets` but missing from the Environment, the caller did not pass
-  `secrets: inherit`, or the run is a pull request from a fork.
-- **Fix:** add the secret to the Environment named in `environment`; pass `secrets: inherit`.
+- **Cause:** the name is listed in `env-vars` but missing from the Environment.
+- **Fix:** add the variable to the Environment named in `environment`.
+
+## `ENV_SECRETS line N: ...`
+
+- **Cause:** a line of `ENV_SECRETS` is not `NAME=value`, the name is invalid, or the value is empty.
+- **Fix:** enter the secret again following the rules in [Configuration](configuration.md#infrastructure-workflows-common-rules).
+
+## Provider authentication fails although the secret exists
+
+- **Cause:** the caller did not pass `secrets: inherit`, the run is a pull request from a fork, or the credential
+  is a separate secret instead of a line of `ENV_SECRETS`.
+- **Fix:** pass `secrets: inherit`; move the credential into `ENV_SECRETS`.
 
 ## `Builds run only from master` / `apply runs only from master`
 

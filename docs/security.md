@@ -27,5 +27,5 @@
 | Token leakage through checkout | runner workspace | `persist-credentials: false` | CWE-522 |
 | Secret in the repository | Git history | gitleaks in pre-commit and CI, push protection | CWE-798 |
 | Credential use from a feature branch | Environment | deployment branch policy, default-branch check in the job | CWE-284 |
-| Over-broad secret access by a called workflow | caller → workflow | pinned SHA, fixed and listed names, [ADR 0003](adr/0003-environment-scoped-credentials.md) | CWE-250 |
+| Over-broad secret access by a called workflow | caller → workflow | pinned SHA, fixed names only, provider secrets in `ENV_SECRETS`, [ADR 0003](adr/0003-environment-scoped-credentials.md) | CWE-250 |
 | Changed release behind a caller | this repository | callers pin SHA; tags are never moved | CWE-829 |

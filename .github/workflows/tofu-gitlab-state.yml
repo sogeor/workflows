@@ -31,10 +31,6 @@ on:
         description: Names of Environment variables exported to OpenTofu.
         type: string
         default: ""
-      env-secrets:
-        description: Names of Environment secrets exported to OpenTofu.
-        type: string
-        default: ""
       mesh:
         description: "Network access: none or wireguard."
         type: string
@@ -142,9 +138,8 @@ jobs:
         uses: ./.shared-workflows/actions/export-env
         with:
           vars-json: ${{ toJSON(vars) }}
-          secrets-json: ${{ toJSON(secrets) }} # zizmor: ignore[overprovisioned-secrets]
           vars: ${{ inputs.env-vars }}
-          secrets: ${{ inputs.env-secrets }}
+          dotenv: ${{ secrets.ENV_SECRETS }}
 
       - name: Configure state backend
         uses: ./.shared-workflows/actions/setup-tofu-http-backend

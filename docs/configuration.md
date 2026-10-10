@@ -70,8 +70,21 @@ No outputs. The SARIF file is also uploaded as artifact `scorecard-sarif` (5 day
 its variables and secrets **by fixed names** ([ADR 0003](adr/0003-environment-scoped-credentials.md)).
 The caller passes `secrets: inherit`; the Environment restricts deployment branches to the default branch.
 
-Provider credentials are not fixed: list their names in `env-vars` / `env-secrets`, and they are exported
-to the job environment with the same names (single-line values trimmed, secrets masked).
+Provider credentials are not fixed:
+
+- non-secret settings are Environment variables listed by name in `env-vars`;
+- secrets are lines `NAME=value` in one Environment secret **`ENV_SECRETS`**; every line is exported to the job
+  environment and every value is masked.
+
+```text
+# ENV_SECRETS for a Proxmox build
+PROXMOX_TOKEN=CHANGE_ME
+```
+
+Rules for `ENV_SECRETS`: one `NAME=value` per line; names of letters, digits and `_`, not starting with a digit,
+`GITHUB_` or `RUNNER_`; the value is everything after the first `=`, surrounding spaces removed; empty lines and
+lines starting with `#` are ignored. To rotate one value, enter the whole secret again.
+OpenTofu input variables use the `TF_VAR_` prefix: `TF_VAR_proxmox_api_token=CHANGE_ME`.
 
 ### Mesh (`mesh: wireguard`)
 
@@ -101,7 +114,6 @@ Builds one Packer image with the caller's build script. Runs only on the default
 | `build-version` | string | `<run_number>-<run_attempt>` | no | Exported as `PKR_VAR_build_version` | `20261011-1` |
 | `packer-vars` | string | empty | no | `NAME=value` per line, exported as `PKR_VAR_NAME` | `base_template=ubuntu-2404-base-v20-1` |
 | `env-vars` | string | `PROXMOX_URL PROXMOX_USERNAME` | no | Environment variables exported to the build | `OS_AUTH_URL` |
-| `env-secrets` | string | `PROXMOX_TOKEN` | no | Environment secrets exported to the build | `OS_PASSWORD` |
 | `ca-pem-var` | string | empty | no | Variable with a PEM CA added to the system trust store | `PROXMOX_CA_PEM` |
 | `mesh` | string | `none` | no | `none` or `wireguard` | `wireguard` |
 | `manifest-file` | string | empty | no | Packer manifest read after the build | `manifest/ubuntu-2404-base.json` |
@@ -135,7 +147,6 @@ Also exported to the build: `PKR_VAR_git_sha` (commit SHA), `PACKER_GITHUB_API_T
 | `tflint` | boolean | `true` | no | `tflint --init` and `tflint --recursive` | `false` |
 | `conftest-policy` | string | empty | no | Rego policies tested against `tofu show -json` | `policies/conftest` |
 | `env-vars` | string | empty | no | Environment variables exported to OpenTofu | `TF_VAR_proxmox_url` |
-| `env-secrets` | string | empty | no | Environment secrets exported to OpenTofu | `TF_VAR_proxmox_token` |
 | `mesh` | string | `none` | no | `none` or `wireguard` | `wireguard` |
 | `comment` | boolean | `true` | no | Post the plan to the pull request | `false` |
 
@@ -181,11 +192,10 @@ Reference: `uses: sogeor/workflows/actions/<name>@<sha> # vX.Y.Z`.
 | Input | Required | Default | Description |
 |---|---|---|---|
 | `vars-json` | no | `{}` | `${{ toJSON(vars) }}` |
-| `secrets-json` | no | `{}` | `${{ toJSON(secrets) }}` |
 | `vars` | no | empty | Variable names to export; single-line values trimmed |
-| `secrets` | no | empty | Secret names to export; every line masked |
+| `dotenv` | no | empty | Secret with `NAME=value` lines, usually `${{ secrets.ENV_SECRETS }}` |
 
-A listed name that is not available fails the step.
+A listed variable that is not available, or a malformed `dotenv` line, fails the step.
 
 ### `setup-mesh`
 

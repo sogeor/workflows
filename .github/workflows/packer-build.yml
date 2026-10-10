@@ -35,10 +35,6 @@ on:
         description: Names of Environment variables exported to the build.
         type: string
         default: PROXMOX_URL PROXMOX_USERNAME
-      env-secrets:
-        description: Names of Environment secrets exported to the build.
-        type: string
-        default: PROXMOX_TOKEN
       ca-pem-var:
         description: Name of an Environment variable with a PEM CA certificate to trust; empty skips.
         type: string
@@ -134,9 +130,8 @@ jobs:
         uses: ./.shared-workflows/actions/export-env
         with:
           vars-json: ${{ toJSON(vars) }}
-          secrets-json: ${{ toJSON(secrets) }} # zizmor: ignore[overprovisioned-secrets]
           vars: ${{ inputs.env-vars }}
-          secrets: ${{ inputs.env-secrets }}
+          dotenv: ${{ secrets.ENV_SECRETS }}
 
       - name: Trust CA
         if: inputs.ca-pem-var != ''

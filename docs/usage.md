@@ -85,6 +85,9 @@ Badge: `https://api.scorecard.dev/projects/github.com/<owner>/<repo>/badge`.
 
 ## Packer build (Proxmox over WireGuard)
 
+Environment `images`: variables `PROXMOX_URL`, `PROXMOX_USERNAME`, `PROXMOX_CA_PEM` and the mesh variables;
+secrets `WG_RUNNER_PRIVATE_KEY` and `ENV_SECRETS` with the line `PROXMOX_TOKEN=CHANGE_ME`.
+
 ```yaml
 name: build
 
@@ -158,7 +161,6 @@ jobs:
       state-name: mgmt
       environment: mgmt-plan
       conftest-policy: policies/conftest
-      env-secrets: TF_VAR_PROXMOX_API_TOKEN
       mesh: wireguard
 
   apply:
@@ -174,12 +176,11 @@ jobs:
       state-name: mgmt
       environment: mgmt
       conftest-policy: policies/conftest
-      env-secrets: TF_VAR_PROXMOX_API_TOKEN
       mesh: wireguard
 ```
 
-Secret names are upper case in GitHub; declare matching OpenTofu variables in upper case
-(`variable "PROXMOX_API_TOKEN"`) or map them in `locals`.
+Provider secrets go to `ENV_SECRETS` of the `mgmt-plan` and `mgmt` Environments, for example
+`TF_VAR_proxmox_api_token=CHANGE_ME`.
 
 Pull requests from forks get no Environment secrets: run `plan` only for branches of the same repository
 (`github.event.pull_request.head.repo.full_name == github.repository`).
