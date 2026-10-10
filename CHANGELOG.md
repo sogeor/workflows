@@ -4,6 +4,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-11
+
 ### Added
 
 - Getting started for infrastructure workflows: GitLab state, Environment, plan comment in a pull request.
@@ -46,5 +48,6 @@ First release.
   (shellcheck, yamllint, actionlint, zizmor, gitleaks), pre-commit, hash-locked Python tools.
 - Documentation to the platform standard, MkDocs site, ADR 0001–0005.
 
-[Unreleased]: https://github.com/sogeor/workflows/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/sogeor/workflows/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/sogeor/workflows/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/sogeor/workflows/releases/tag/v0.1.0
