@@ -1,0 +1,255 @@
+name: tofu-gitlab-state
+
+on:
+  workflow_call:
+    inputs:
+      command:
+        description: "plan (read-only, comments on the pull request) or apply (default branch only)."
+        type: string
+        default: plan
+      working-directory:
+        description: Root module directory in the caller repository.
+        type: string
+        required: true
+      state-name:
+        description: Name of the GitLab-managed state.
+        type: string
+        required: true
+      environment:
+        description: GitHub Environment with the backend and provider credentials (read-only for plan, read-write for apply).
+        type: string
+        required: true
+      tflint:
+        description: Run tflint on the root module and its local modules.
+        type: boolean
+        default: true
+      conftest-policy:
+        description: Directory with Rego policies for conftest against the plan; empty skips.
+        type: string
+        default: ""
+      env-vars:
+        description: Names of Environment variables exported to OpenTofu.
+        type: string
+        default: ""
+      mesh:
+        description: "Network access: none or wireguard."
+        type: string
+        default: none
+      comment:
+        description: Post the plan as a pull request comment.
+        type: boolean
+        default: true
+    outputs:
+      changes:
+        description: "true when the plan has changes."
+        value: ${{ jobs.tofu.outputs.changes }}
+
+permissions:
+  contents: read
+
+env:
+  # renovate: datasource=github-releases depName=opentofu/opentofu
+  TOFU_VERSION: "1.13.1"
+  TOFU_SHA256: "378ada19d4bc70c43732004e8159be771b23b9a5afdf059e5f8a2b3fa2c70a69"
+  # renovate: datasource=github-releases depName=terraform-linters/tflint
+  TFLINT_VERSION: "0.64.0"
+  TFLINT_SHA256: "cca9d13e2e1d7a2c627af60ff899a3c9b74212899416aeb96ec764d2ef954537"
+  # renovate: datasource=github-releases depName=open-policy-agent/conftest
+  CONFTEST_VERSION: "0.71.1"
+  CONFTEST_SHA256: "c3f6b2a753bd56e377a1e51a95ae3e057f926f2e9139f7d5b5dfbbaf810f7985"
+
+jobs:
+  tofu:
+    name: ${{ inputs.command }} ${{ inputs.state-name }}
+    runs-on: ubuntu-24.04
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 60
+    concurrency:
+      group: tofu-${{ github.repository }}-${{ inputs.state-name }}-${{ inputs.command }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      pull-requests: write
+    outputs:
+      changes: ${{ steps.plan.outputs.changes }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Check command
+        working-directory: .
+        env:
+          COMMAND: ${{ inputs.command }}
+          REF: ${{ github.ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          case "$COMMAND" in
+            plan) ;;
+            apply)
+              if [[ "$REF" != "refs/heads/${DEFAULT_BRANCH}" ]]; then
+                echo "::error::apply runs only from ${DEFAULT_BRANCH}; got ${REF}."
+                exit 1
+              fi
+              ;;
+            *)
+              echo "::error::command must be plan or apply."
+              exit 1
+              ;;
+          esac
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Locate shared actions
+        id: self
+        working-directory: .
+        env:
+          WORKFLOW_REF: ${{ job.workflow_ref }}
+        run: echo "repository=${WORKFLOW_REF%%/.github/workflows/*}" >>"$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ steps.self.outputs.repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .shared-workflows
+          persist-credentials: false
+
+      - name: Install OpenTofu, tflint and conftest
+        working-directory: .
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/bin"
+          curl -fsSL -o "$RUNNER_TEMP/tofu.tgz" \
+            "https://github.com/opentofu/opentofu/releases/download/v${TOFU_VERSION}/tofu_${TOFU_VERSION}_linux_amd64.tar.gz"
+          echo "${TOFU_SHA256}  $RUNNER_TEMP/tofu.tgz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/tofu.tgz" -C "$RUNNER_TEMP/bin" tofu
+          curl -fsSL -o "$RUNNER_TEMP/tflint.zip" \
+            "https://github.com/terraform-linters/tflint/releases/download/v${TFLINT_VERSION}/tflint_linux_amd64.zip"
+          echo "${TFLINT_SHA256}  $RUNNER_TEMP/tflint.zip" | sha256sum -c -
+          unzip -q -o "$RUNNER_TEMP/tflint.zip" -d "$RUNNER_TEMP/bin"
+          curl -fsSL -o "$RUNNER_TEMP/conftest.tgz" \
+            "https://github.com/open-policy-agent/conftest/releases/download/v${CONFTEST_VERSION}/conftest_${CONFTEST_VERSION}_Linux_x86_64.tar.gz"
+          echo "${CONFTEST_SHA256}  $RUNNER_TEMP/conftest.tgz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/conftest.tgz" -C "$RUNNER_TEMP/bin" conftest
+          echo "$RUNNER_TEMP/bin" >>"$GITHUB_PATH"
+
+      - name: Export environment
+        uses: ./.shared-workflows/actions/export-env
+        with:
+          vars-json: ${{ toJSON(vars) }}
+          vars: ${{ inputs.env-vars }}
+          dotenv: ${{ secrets.ENV_SECRETS }}
+
+      - name: Configure state backend
+        uses: ./.shared-workflows/actions/setup-tofu-http-backend
+        with:
+          project-id: ${{ vars.GITLAB_TFSTATE_PROJECT_ID }}
+          state-name: ${{ inputs.state-name }}
+          username: ${{ vars.GITLAB_TFSTATE_USERNAME }}
+          token: ${{ secrets.GITLAB_TFSTATE_TOKEN }}
+
+      - name: Connect mesh
+        if: inputs.mesh != 'none'
+        uses: ./.shared-workflows/actions/setup-mesh
+        with:
+          mode: ${{ inputs.mesh }}
+          wg-private-key: ${{ secrets.WG_RUNNER_PRIVATE_KEY }}
+          wg-server-public-key: ${{ vars.WG_SERVER_PUBLIC_KEY }}
+          wg-endpoint: ${{ vars.WG_ENDPOINT }}
+          wg-address: ${{ vars.WG_ADDRESS }}
+          wg-allowed-ips: ${{ vars.WG_ALLOWED_IPS }}
+          check-address: ${{ vars.MESH_CHECK_ADDRESS }}
+
+      - name: tofu fmt
+        run: tofu fmt -check -diff -recursive
+
+      - name: tofu init
+        env:
+          TF_VAR_state_passphrase: ${{ secrets.STATE_PASSPHRASE }}
+        run: tofu init -input=false
+
+      - name: tofu validate
+        env:
+          TF_VAR_state_passphrase: ${{ secrets.STATE_PASSPHRASE }}
+        run: tofu validate -no-color
+
+      - name: tflint
+        if: inputs.tflint
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tflint --init
+          tflint --recursive --format compact
+
+      - name: tofu plan
+        id: plan
+        env:
+          TF_VAR_state_passphrase: ${{ secrets.STATE_PASSPHRASE }}
+          COMMAND: ${{ inputs.command }}
+        run: |
+          set -euo pipefail
+          lock=()
+          if [[ "$COMMAND" == plan ]]; then
+            lock=(-lock=false)
+          fi
+          set +e
+          tofu plan -input=false -no-color -detailed-exitcode "${lock[@]}" -out="$RUNNER_TEMP/tfplan"
+          code=$?
+          set -e
+          case "$code" in
+            0) echo "changes=false" >>"$GITHUB_OUTPUT" ;;
+            2) echo "changes=true" >>"$GITHUB_OUTPUT" ;;
+            *) exit "$code" ;;
+          esac
+          tofu show -no-color "$RUNNER_TEMP/tfplan" >"$RUNNER_TEMP/plan.txt"
+          tofu show -json "$RUNNER_TEMP/tfplan" >"$RUNNER_TEMP/plan.json"
+
+      - name: conftest
+        if: inputs.conftest-policy != ''
+        working-directory: .
+        env:
+          POLICY: ${{ inputs.conftest-policy }}
+        run: conftest test --no-color --policy "$POLICY" "$RUNNER_TEMP/plan.json"
+
+      - name: Plan comment body
+        if: inputs.command == 'plan' && inputs.comment && github.event_name == 'pull_request'
+        working-directory: .
+        env:
+          STATE: ${{ inputs.state-name }}
+          CHANGES: ${{ steps.plan.outputs.changes }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          {
+            echo "### OpenTofu plan: \`${STATE}\`"
+            echo
+            echo "Changes: **${CHANGES}** · [run](${RUN_URL})"
+            echo
+            echo '<details><summary>Plan</summary>'
+            echo
+            echo '```text'
+            sed -n '/^OpenTofu will perform/,$p; /^No changes/,$p' "$RUNNER_TEMP/plan.txt"
+            echo '```'
+            echo
+            echo '</details>'
+          } >"$RUNNER_TEMP/comment.md"
+
+      - name: Comment on pull request
+        if: inputs.command == 'plan' && inputs.comment && github.event_name == 'pull_request'
+        uses: ./.shared-workflows/actions/pr-comment
+        with:
+          marker: tofu-plan-${{ inputs.state-name }}
+          body-file: ${{ runner.temp }}/comment.md
+
+      - name: tofu apply
+        if: inputs.command == 'apply' && steps.plan.outputs.changes == 'true'
+        env:
+          TF_VAR_state_passphrase: ${{ secrets.STATE_PASSPHRASE }}
+        run: tofu apply -input=false -no-color "$RUNNER_TEMP/tfplan"
+
+      - name: Remove plan files
+        if: always()
+        working-directory: .
+        run: rm -f "$RUNNER_TEMP/tfplan" "$RUNNER_TEMP/plan.json" "$RUNNER_TEMP/plan.txt"

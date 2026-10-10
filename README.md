@@ -15,7 +15,10 @@ Reusable GitHub Actions workflows and composite actions for the sogeor platform.
 - **Exact versions:** callers pin a release by full commit SHA with the tag in a comment; Renovate updates it.
 - **Tested:** `self-test` calls every workflow on this repository.
 - Workflows: `docs` (markdownlint, lychee, MkDocs), `security-lite` (gitleaks, Trivy, Semgrep, Checkov),
-  `scorecard` (OpenSSF Scorecard).
+  `scorecard` (OpenSSF Scorecard), `packer-build`, `tofu-gitlab-state` (GitLab-managed state, plan comments,
+  Conftest), `mirror-to-gitlab`.
+- Actions: `export-env`, `setup-mesh` (WireGuard), `setup-tofu-http-backend`, `pr-comment`.
+- **Infrastructure credentials** stay in the caller's GitHub Environment, usable only from the default branch.
 
 ```mermaid
 flowchart LR
@@ -73,6 +76,11 @@ Preview locally: `pip install --require-hashes -r .github/requirements-docs.txt 
 | Trivy | 0.75.0 |
 | Semgrep (image) | 1.180.0-nonroot |
 | Checkov (image) | 3.3.26 |
+| OpenTofu | 1.13.1 |
+| tflint | 0.64.0 |
+| conftest | 0.71.1 |
+| Packer (default) | 1.16.1 |
+| hashicorp/setup-packer | v3.4.0 |
 | zizmor | 1.30.1 |
 | yamllint | 1.38.0 |
 | mkdocs-material | 9.7.7 |

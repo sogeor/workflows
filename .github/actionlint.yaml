@@ -1,0 +1,4 @@
+paths:
+  .github/workflows/**/*.yml:
+    ignore:
+      - 'property "workflow_(ref|sha)" is not defined in object type'

@@ -8,6 +8,10 @@
 - Checkout never persists credentials.
 - `actionlint`, `zizmor` and `gitleaks` run on every change.
 
+- Infrastructure jobs run only in a caller Environment; `apply` and builds refuse to run outside the default branch.
+- Plans are never uploaded; plan files are deleted at the end of the job.
+- Exported secrets, the WireGuard key and GitLab tokens are masked in logs.
+
 ## Not guaranteed
 
 - Security of the caller: a caller can still grant broad permissions or pass secrets to untrusted code.
@@ -22,4 +26,6 @@
 | Script injection through inputs or PR titles | caller → workflow | values passed through `env:`, `zizmor` | CWE-78 |
 | Token leakage through checkout | runner workspace | `persist-credentials: false` | CWE-522 |
 | Secret in the repository | Git history | gitleaks in pre-commit and CI, push protection | CWE-798 |
+| Credential use from a feature branch | Environment | deployment branch policy, default-branch check in the job | CWE-284 |
+| Over-broad secret access by a called workflow | caller → workflow | pinned SHA, fixed names only, provider secrets in `ENV_SECRETS`, [ADR 0003](adr/0003-environment-scoped-credentials.md) | CWE-250 |
 | Changed release behind a caller | this repository | callers pin SHA; tags are never moved | CWE-829 |

@@ -1,0 +1,92 @@
+name: mirror-to-gitlab
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: GitHub Environment with the GitLab variables and token.
+        type: string
+        required: true
+      mesh:
+        description: "Network access: none or wireguard."
+        type: string
+        default: none
+      ca-pem-var:
+        description: Name of an Environment variable with a PEM CA certificate of GitLab; empty skips.
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  mirror:
+    name: mirror
+    runs-on: ubuntu-24.04
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 15
+    concurrency:
+      group: mirror-${{ github.repository }}
+      cancel-in-progress: true
+    steps:
+      - name: Locate shared actions
+        id: self
+        env:
+          WORKFLOW_REF: ${{ job.workflow_ref }}
+        run: echo "repository=${WORKFLOW_REF%%/.github/workflows/*}" >>"$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ steps.self.outputs.repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .shared-workflows
+          persist-credentials: false
+
+      - name: Trust CA
+        if: inputs.ca-pem-var != ''
+        env:
+          CA_PEM: ${{ vars[inputs.ca-pem-var] }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$CA_PEM" ]]; then
+            echo "::error::The CA variable is empty."
+            exit 1
+          fi
+          printf '%s\n' "$CA_PEM" | sudo tee /usr/local/share/ca-certificates/gitlab-ca.crt >/dev/null
+          sudo update-ca-certificates >/dev/null
+
+      - name: Connect mesh
+        if: inputs.mesh != 'none'
+        uses: ./.shared-workflows/actions/setup-mesh
+        with:
+          mode: ${{ inputs.mesh }}
+          wg-private-key: ${{ secrets.WG_RUNNER_PRIVATE_KEY }}
+          wg-server-public-key: ${{ vars.WG_SERVER_PUBLIC_KEY }}
+          wg-endpoint: ${{ vars.WG_ENDPOINT }}
+          wg-address: ${{ vars.WG_ADDRESS }}
+          wg-allowed-ips: ${{ vars.WG_ALLOWED_IPS }}
+          check-address: ${{ vars.MESH_CHECK_ADDRESS }}
+
+      - name: Push branches and tags
+        env:
+          SOURCE: ${{ github.server_url }}/${{ github.repository }}.git
+          GITLAB_URL: ${{ vars.GITLAB_MIRROR_URL }}
+          GITLAB_PROJECT: ${{ vars.GITLAB_MIRROR_PROJECT }}
+          GITLAB_TOKEN: ${{ secrets.GITLAB_MIRROR_TOKEN }}
+        run: |
+          set -euo pipefail
+          url="$(printf '%s' "$GITLAB_URL" | tr -d '[:space:]')"
+          project="$(printf '%s' "$GITLAB_PROJECT" | tr -d '[:space:]')"
+          token="$(printf '%s' "$GITLAB_TOKEN" | tr -d '[:space:]')"
+          echo "::add-mask::${token}"
+          if [[ "$url" != https://* || ! "$project" =~ ^[A-Za-z0-9._/-]+$ || -z "$token" ]]; then
+            echo "::error::Set GITLAB_MIRROR_URL (https), GITLAB_MIRROR_PROJECT and GITLAB_MIRROR_TOKEN."
+            exit 1
+          fi
+          auth="$(printf 'oauth2:%s' "$token" | base64 -w0)"
+          echo "::add-mask::${auth}"
+          git clone --quiet --mirror "$SOURCE" "$RUNNER_TEMP/mirror.git"
+          git -C "$RUNNER_TEMP/mirror.git" \
+            -c "http.extraHeader=Authorization: Basic ${auth}" \
+            push --prune "${url%/}/${project}.git" \
+            '+refs/heads/*:refs/heads/*' '+refs/tags/*:refs/tags/*'

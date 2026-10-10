@@ -1,0 +1,31 @@
+name: pr-comment
+description: Create or update a single pull request comment identified by a marker.
+
+inputs:
+  marker:
+    description: Unique marker of the comment; letters, digits, dot, dash and underscore.
+    required: true
+  body-file:
+    description: Path to a Markdown file with the comment body.
+    required: true
+  pr-number:
+    description: Pull request number; defaults to the current pull request.
+    required: false
+    default: ""
+  token:
+    description: Token with pull-requests write permission.
+    required: false
+    default: ${{ github.token }}
+
+runs:
+  using: composite
+  steps:
+    - name: Comment
+      shell: bash
+      env:
+        MARKER: ${{ inputs.marker }}
+        BODY_FILE: ${{ inputs.body-file }}
+        PR_NUMBER: ${{ inputs.pr-number || github.event.pull_request.number }}
+        GH_TOKEN: ${{ inputs.token }}
+        REPO: ${{ github.repository }}
+      run: '"$GITHUB_ACTION_PATH/pr-comment.sh"'

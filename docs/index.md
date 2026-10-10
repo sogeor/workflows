@@ -19,8 +19,8 @@ The internal loop (GitLab in the management cluster) uses `ci-templates` instead
 | Kind | Name | Status |
 |---|---|---|
 | Workflow | `docs`, `security-lite`, `scorecard` | available, first release `v0.1.0` |
-| Workflow | `tofu-gitlab-state`, `packer-build`, `mirror-to-gitlab` | planned for `v0.2.0` |
-| Action | `setup-tofu-http-backend`, `setup-mesh`, `pr-comment` | planned for `v0.2.0` |
+| Workflow | `tofu-gitlab-state`, `packer-build`, `mirror-to-gitlab` | available |
+| Action | `export-env`, `setup-mesh`, `setup-tofu-http-backend`, `pr-comment` | available |
 | Workflow | `ansible-lint`, `gitops-validate` | later, see [roadmap](https://github.com/sogeor/workflows/blob/master/ROADMAP.md) |
 
 The current list is in [Reference](reference/workflows.md).
