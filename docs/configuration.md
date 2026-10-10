@@ -13,7 +13,7 @@ Checks Markdown, links and the MkDocs site of the caller repository.
 |---|---|---|---|---|---|
 | `markdown-globs` | string | `*.md`, `docs/**/*.md`, `.github/**/*.md` (one per line) | no | Globs checked by markdownlint; the caller's `.markdownlint.yaml` applies | `README.md` |
 | `link-paths` | string | `'*.md' 'docs/**/*.md' '.github/**/*.md'` | no | Space-separated, quoted paths checked by lychee | `'docs/**/*.md'` |
-| `link-args` | string | empty | no | Extra lychee arguments | `--exclude '^https://example\.com/'` |
+| `link-args` | string | empty | no | Extra lychee arguments; lychee always runs with `--max-retries 5 --retry-wait-time 10` | `--exclude '^https://example\.com/'` |
 | `mkdocs` | boolean | `true` | no | Run `mkdocs build --strict` | `false` |
 | `requirements` | string | `.github/requirements-docs.txt` | no | Hash-locked requirements with MkDocs and plugins, installed with `--require-hashes` | `docs/requirements.txt` |
 

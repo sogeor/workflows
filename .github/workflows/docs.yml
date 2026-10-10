@@ -51,6 +51,8 @@ jobs:
         with:
           args: >-
             --no-progress
+            --max-retries 5
+            --retry-wait-time 10
             --exclude-path site
             ${{ inputs.link-args }}
             ${{ inputs.link-paths }}

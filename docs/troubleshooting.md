@@ -64,3 +64,8 @@
 
 - **Cause:** a concurrent apply, or a token without scope `api` or without the Maintainer role.
 - **Fix:** wait for the other run; recreate the token with the right scope and role.
+
+## lychee: `503 Service Unavailable` or `429 Too Many Requests` from github.com
+
+- **Cause:** GitHub rate-limits or briefly fails requests from shared runners; the link itself is valid.
+- **Fix:** `docs.yml` retries 5 times with a 10-second pause; if it still fails, re-run the job.
