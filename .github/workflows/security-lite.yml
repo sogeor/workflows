@@ -1,0 +1,179 @@
+name: security-lite
+
+on:
+  workflow_call:
+    inputs:
+      gitleaks:
+        description: Scan the Git history for secrets.
+        type: boolean
+        default: true
+      trivy:
+        description: Scan the file system for vulnerabilities, secrets and misconfigurations.
+        type: boolean
+        default: true
+      trivy-severity:
+        description: Comma-separated severities that fail the Trivy scan.
+        type: string
+        default: CRITICAL,HIGH
+      semgrep:
+        description: Run Semgrep SAST.
+        type: boolean
+        default: true
+      semgrep-config:
+        description: Semgrep rule configuration (registry ruleset or path).
+        type: string
+        default: p/default
+      checkov:
+        description: Run Checkov on infrastructure code.
+        type: boolean
+        default: false
+      checkov-frameworks:
+        description: Comma-separated Checkov frameworks; empty means all.
+        type: string
+        default: ""
+      upload-sarif:
+        description: Upload results to GitHub code scanning.
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+env:
+  # renovate: datasource=github-releases depName=gitleaks/gitleaks
+  GITLEAKS_VERSION: "8.30.1"
+  GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+  # renovate: datasource=github-releases depName=aquasecurity/trivy
+  TRIVY_VERSION: "0.75.0"
+  TRIVY_SHA256: "c6e65abddb348e25f10549df887045629cf28cc72453cd1c63acb717316b3f3f"
+  SEMGREP_IMAGE: "docker.io/semgrep/semgrep:1.180.0-nonroot@sha256:fe51a9f5b261bd38d0f77bda48921c2ba27615ccb74ec2d6b0edbf3cf4e27d54"
+  CHECKOV_IMAGE: "docker.io/bridgecrew/checkov:3.3.26@sha256:8e63f217cb084f1c1a067326a9cf6e37d54bdc82e5822210d50ca4e2f647dd93"
+
+jobs:
+  gitleaks:
+    name: gitleaks
+    if: inputs.gitleaks
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Install gitleaks
+        run: |
+          set -euo pipefail
+          curl -fsSL -o "$RUNNER_TEMP/gitleaks.tgz" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  $RUNNER_TEMP/gitleaks.tgz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/gitleaks.tgz" -C "$RUNNER_TEMP" gitleaks
+
+      - name: gitleaks
+        run: |
+          "$RUNNER_TEMP/gitleaks" git --redact --no-banner \
+            --report-format sarif --report-path gitleaks.sarif .
+
+      - name: Upload SARIF
+        if: always() && inputs.upload-sarif && hashFiles('gitleaks.sarif') != ''
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          sarif_file: gitleaks.sarif
+          category: gitleaks
+
+  trivy:
+    name: trivy
+    if: inputs.trivy
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Trivy
+        run: |
+          set -euo pipefail
+          curl -fsSL -o "$RUNNER_TEMP/trivy.tgz" \
+            "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          echo "${TRIVY_SHA256}  $RUNNER_TEMP/trivy.tgz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/trivy.tgz" -C "$RUNNER_TEMP" trivy
+
+      - name: trivy fs
+        env:
+          SEVERITY: ${{ inputs.trivy-severity }}
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/trivy" fs --quiet --scanners vuln,secret,misconfig \
+            --format sarif --output trivy.sarif .
+          "$RUNNER_TEMP/trivy" fs --quiet --scanners vuln,secret,misconfig \
+            --severity "$SEVERITY" --exit-code 1 .
+
+      - name: Upload SARIF
+        if: always() && inputs.upload-sarif && hashFiles('trivy.sarif') != ''
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          sarif_file: trivy.sarif
+          category: trivy
+
+  semgrep:
+    name: semgrep
+    if: inputs.semgrep
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: semgrep
+        env:
+          SEMGREP_CONFIG: ${{ inputs.semgrep-config }}
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src -e HOME=/tmp \
+            --user "$(id -u):$(id -g)" "$SEMGREP_IMAGE" \
+            semgrep scan --metrics off --error --config "$SEMGREP_CONFIG" \
+            --sarif-output semgrep.sarif
+
+      - name: Upload SARIF
+        if: always() && inputs.upload-sarif && hashFiles('semgrep.sarif') != ''
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+  checkov:
+    name: checkov
+    if: inputs.checkov
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: checkov
+        env:
+          FRAMEWORKS: ${{ inputs.checkov-frameworks }}
+        run: |
+          set -euo pipefail
+          args=(-d /src --output cli --output sarif --output-file-path console,/src)
+          if [ -n "$FRAMEWORKS" ]; then
+            args+=(--framework "$FRAMEWORKS")
+          fi
+          docker run --rm -v "$PWD:/src" -e HOME=/tmp --user "$(id -u):$(id -g)" "$CHECKOV_IMAGE" "${args[@]}"
+
+      - name: Upload SARIF
+        if: always() && inputs.upload-sarif && hashFiles('results_sarif.sarif') != ''
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          sarif_file: results_sarif.sarif
+          category: checkov

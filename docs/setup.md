@@ -29,7 +29,8 @@ For private repositories of the same organization select
 1. Name `master`, Enforcement status **Active**, target branch **Default**.
 2. Enable **Restrict deletions**, **Require signed commits**, **Require a pull request before merging** (0 approvals),
    **Block force pushes**.
-3. **Require status checks to pass**, **Require branches to be up to date**; add `linters` and `docs`.
+3. **Require status checks to pass**, **Require branches to be up to date**; add `linters`, `docs / docs`, `security-lite / gitleaks`, `security-lite / trivy`,
+   `security-lite / semgrep`, `security-lite / checkov`, `scorecard / Scorecard analysis`.
 4. **Bypass list:** Repository admin, mode **For pull requests only**.
 
 ## Advanced Security
