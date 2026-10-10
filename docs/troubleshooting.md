@@ -71,4 +71,5 @@
   the link itself is valid.
 - **Fix:** `docs.yml` checks `https://github.com/<owner>/<repo>/blob/<ref>/<path>` as
   `https://raw.githubusercontent.com/<owner>/<repo>/<ref>/<path>` (a missing file still fails with 404) and
-  retries 5 times with a 10-second pause. If another github.com page fails, re-run the job.
+  retries 5 times with a 10-second pause. Profile and organization pages (`https://github.com/<name>`) answer
+  runners with 504 and are not checked. If another github.com page fails, re-run the job.
