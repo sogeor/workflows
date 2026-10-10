@@ -17,8 +17,12 @@ By contributing you agree that your contribution is licensed under [Apache-2.0](
 ## Tests
 
 - Every reusable workflow and composite action is exercised by `self-test`.
-- A new input or behavior comes with a fixture in `tests/fixtures/` that covers it.
-- Fixed defects get a fixture that would have caught them.
+- A new input or behavior of an action comes with a positive and a negative case in the `actions` job of
+  `self-test.yml` (inline fixture values; negative cases use `continue-on-error` and are checked in
+  `Check rejections`).
+- Fixed defects get a case that would have caught them.
+- Infrastructure workflows cannot run in `self-test` without credentials; their shell steps are checked by
+  actionlint with shellcheck, and changes are verified by a run in a caller repository before release.
 
 ## Coding standards
 

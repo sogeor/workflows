@@ -1,6 +1,6 @@
 # 0003. Environment-scoped credentials with fixed names
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-11
 
 ## Context and problem statement

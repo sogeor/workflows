@@ -1,6 +1,6 @@
 # 0002. Exact versioning and SHA pinning of releases
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-11
 
 ## Context and problem statement
