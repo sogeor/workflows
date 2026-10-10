@@ -65,11 +65,11 @@
 - **Cause:** a concurrent apply, or a token without scope `api` or without the Maintainer role.
 - **Fix:** wait for the other run; recreate the token with the right scope and role.
 
-## lychee: `503 Service Unavailable` or `429 Too Many Requests` from github.com
+## lychee: `429`, `502`, `503` or `504` from github.com
 
-- **Cause:** github.com answers anonymous requests to `/blob/` pages with 503 and rate-limits shared runners;
-  the link itself is valid.
-- **Fix:** `docs.yml` checks `https://github.com/<owner>/<repo>/blob/<ref>/<path>` as
-  `https://raw.githubusercontent.com/<owner>/<repo>/<ref>/<path>` (a missing file still fails with 404) and
-  retries 5 times with a 10-second pause. Profile and organization pages (`https://github.com/<name>`) answer
-  runners with 504 and are not checked. If another github.com page fails, re-run the job.
+- **Cause:** github.com answers anonymous requests from shared runners with these codes (and always 503 for
+  `/blob/` pages); the link itself is valid.
+- **Fix:** handled by `docs.yml`: `/blob/` links are checked as
+  `https://raw.githubusercontent.com/<owner>/<repo>/<ref>/<path>` (a missing file still fails with 404), and
+  429 and 502–504 are accepted through `link-accept`. A broken link still fails with 404 or a connection error.
+  To be strict, pass `link-accept: 100..=103,200..=299`.
