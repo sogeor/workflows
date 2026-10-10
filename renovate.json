@@ -62,6 +62,17 @@
         "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s+\\S+_VERSION:\\s*\"(?<currentValue>[^\"]+)\""
       ],
       "extractVersionTemplate": "^v?(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/(^|/)\\.github/workflows/[^/]+\\.ya?ml$/",
+        "/(^|/)actions/[^/]+/action\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "\"docker\\.io/(?<depName>[^:\"\\s]+):(?<currentValue>[^@\"\\s]+)@(?<currentDigest>sha256:[0-9a-f]{64})\""
+      ],
+      "datasourceTemplate": "docker"
     }
   ],
   "pip-compile": {

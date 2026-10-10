@@ -3,7 +3,7 @@
 Reusable GitHub Actions workflows and composite actions for the sogeor platform.
 
 [![validate](https://github.com/sogeor/workflows/actions/workflows/validate.yml/badge.svg)](https://github.com/sogeor/workflows/actions/workflows/validate.yml)
-[![docs](https://github.com/sogeor/workflows/actions/workflows/docs.yml/badge.svg)](https://github.com/sogeor/workflows/actions/workflows/docs.yml)
+[![self-test](https://github.com/sogeor/workflows/actions/workflows/self-test.yml/badge.svg)](https://github.com/sogeor/workflows/actions/workflows/self-test.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/sogeor/workflows/badge)](https://scorecard.dev/viewer/?uri=github.com/sogeor/workflows)
 [![License](https://img.shields.io/github/license/sogeor/workflows)](LICENSE)
 
@@ -13,7 +13,9 @@ Reusable GitHub Actions workflows and composite actions for the sogeor platform.
 - **Secure by default:** minimal `permissions`, `persist-credentials: false`, actions pinned by full SHA,
   tool downloads verified by SHA-256, inputs passed to shell only through `env:`.
 - **Exact versions:** callers pin a release by full commit SHA with the tag in a comment; Renovate updates it.
-- **Tested:** `self-test` calls every workflow and action on fixtures.
+- **Tested:** `self-test` calls every workflow on this repository.
+- Workflows: `docs` (markdownlint, lychee, MkDocs), `security-lite` (gitleaks, Trivy, Semgrep, Checkov),
+  `scorecard` (OpenSSF Scorecard).
 
 ```mermaid
 flowchart LR
@@ -35,7 +37,7 @@ jobs:
     uses: sogeor/workflows/.github/workflows/docs.yml@<full-sha> # vX.Y.Z
 ```
 
-The first workflows arrive with release `v0.1.0`; see [Getting started](docs/getting-started.md).
+More examples: [Usage](docs/usage.md); first release `v0.1.0`.
 
 ## Documentation
 
@@ -68,6 +70,9 @@ Preview locally: `pip install --require-hashes -r .github/requirements-docs.txt 
 | lycheeverse/lychee-action | v2.9.0 |
 | actionlint | 1.7.12 |
 | gitleaks | 8.30.1 |
+| Trivy | 0.75.0 |
+| Semgrep (image) | 1.180.0-nonroot |
+| Checkov (image) | 3.3.26 |
 | zizmor | 1.30.1 |
 | yamllint | 1.38.0 |
 | mkdocs-material | 9.7.7 |

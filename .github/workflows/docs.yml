@@ -1,17 +1,34 @@
 name: docs
 
 on:
-  pull_request:
-  push:
-    branches: [master]
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      markdown-globs:
+        description: Newline-separated globs checked by markdownlint.
+        type: string
+        default: |
+          *.md
+          docs/**/*.md
+          .github/**/*.md
+      link-paths:
+        description: Space-separated quoted paths checked by lychee.
+        type: string
+        default: "'*.md' 'docs/**/*.md' '.github/**/*.md'"
+      link-args:
+        description: Extra lychee arguments, for example exclusions.
+        type: string
+        default: ""
+      mkdocs:
+        description: Build the MkDocs site with --strict.
+        type: boolean
+        default: true
+      requirements:
+        description: Hash-locked requirements file with MkDocs and plugins.
+        type: string
+        default: .github/requirements-docs.txt
 
 permissions:
   contents: read
-
-concurrency:
-  group: docs-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   docs:
@@ -25,10 +42,7 @@ jobs:
       - name: markdownlint
         uses: DavidAnson/markdownlint-cli2-action@21c1be1b93ad9ed58fa840aacc3f279cde2a72ff # v24.2.0
         with:
-          globs: |
-            *.md
-            docs/**/*.md
-            .github/**/*.md
+          globs: ${{ inputs.markdown-globs }}
 
       - name: lychee
         env:
@@ -38,12 +52,15 @@ jobs:
           args: >-
             --no-progress
             --exclude-path site
-            --exclude '^https://github\.com/sogeor/workflows/(security|issues/new)'
-            '*.md' 'docs/**/*.md' '.github/**/*.md'
+            ${{ inputs.link-args }}
+            ${{ inputs.link-paths }}
           fail: true
 
       - name: mkdocs build --strict
+        if: inputs.mkdocs
+        env:
+          REQUIREMENTS: ${{ inputs.requirements }}
         run: |
           set -euo pipefail
-          python3 -m pip install --user --quiet --require-hashes -r .github/requirements-docs.txt
+          python3 -m pip install --user --quiet --require-hashes -r "$REQUIREMENTS"
           python3 -m mkdocs build --strict --site-dir "$RUNNER_TEMP/site"

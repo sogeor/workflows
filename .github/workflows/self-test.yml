@@ -1,0 +1,44 @@
+name: self-test
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: self-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docs:
+    name: docs
+    uses: ./.github/workflows/docs.yml
+    with:
+      link-args: >-
+        --exclude '^https://github\.com/sogeor/workflows/(security|issues/new|releases)'
+
+  security-lite:
+    name: security-lite
+    uses: ./.github/workflows/security-lite.yml
+    permissions:
+      contents: read
+      security-events: write
+    with:
+      checkov: true
+      upload-sarif: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+
+  scorecard:
+    name: scorecard
+    uses: ./.github/workflows/scorecard.yml
+    permissions:
+      security-events: write
+      id-token: write
+      contents: read
+      actions: read
+    with:
+      publish-results: false
+      upload-sarif: false
