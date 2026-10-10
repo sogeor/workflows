@@ -1,0 +1,45 @@
+name: Bug report
+description: Something does not work as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not report security vulnerabilities here. Use [Private Vulnerability Reporting](https://github.com/sogeor/workflows/security/advisories/new).
+        Check [Troubleshooting](https://github.com/sogeor/workflows/blob/master/docs/troubleshooting.md) first.
+  - type: dropdown
+    id: image
+    attributes:
+      label: Component
+      options:
+        - reusable workflow
+        - composite action
+        - repository CI
+        - documentation
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Command or workflow run, actual result, expected result.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant output. Remove tokens, keys and private addresses.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Tag and commit SHA you call (for example v0.1.0 / full SHA).
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Caller repository, workflow file and run URL; runner image.

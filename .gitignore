@@ -1,0 +1,13 @@
+site/
+.cache/
+*.pem
+*.key
+id_*
+!id_*.pub
+.env
+.env.*
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
