@@ -67,5 +67,8 @@
 
 ## lychee: `503 Service Unavailable` or `429 Too Many Requests` from github.com
 
-- **Cause:** GitHub rate-limits or briefly fails requests from shared runners; the link itself is valid.
-- **Fix:** `docs.yml` retries 5 times with a 10-second pause; if it still fails, re-run the job.
+- **Cause:** github.com answers anonymous requests to `/blob/` pages with 503 and rate-limits shared runners;
+  the link itself is valid.
+- **Fix:** `docs.yml` checks `https://github.com/<owner>/<repo>/blob/<ref>/<path>` as
+  `https://raw.githubusercontent.com/<owner>/<repo>/<ref>/<path>` (a missing file still fails with 404) and
+  retries 5 times with a 10-second pause. If another github.com page fails, re-run the job.

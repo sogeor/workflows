@@ -53,6 +53,7 @@ jobs:
             --no-progress
             --max-retries 5
             --retry-wait-time 10
+            --remap 'https://github\.com/([^/]+)/([^/]+)/blob/(.+) https://raw.githubusercontent.com/$1/$2/$3'
             --exclude-path site
             ${{ inputs.link-args }}
             ${{ inputs.link-paths }}
