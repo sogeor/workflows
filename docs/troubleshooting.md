@@ -18,9 +18,12 @@
 
 ## Scorecard: `workflow verification failed` when publishing
 
-- **Cause:** the Scorecard API verifies the workflow that runs the action and may reject results produced
-  inside a reusable workflow.
-- **Fix:** set `publish-results: false`, or copy the steps of `scorecard.yml` into the caller workflow.
+- **Cause:** publishing from `scorecard.yml` works (this repository publishes through it), but the Scorecard API
+  also checks the **caller** workflow file: it must not set top-level `env:` or `defaults:`, must not grant write
+  permissions at workflow level (use `permissions: {}` and grant per job), and only the job that calls
+  `scorecard.yml` may have `id-token: write`.
+- **Fix:** make the caller match the example in [Usage](usage.md#scorecard); compare it with
+  `.github/workflows/repo-scorecard.yml` of this repository. As a last resort set `publish-results: false`.
 
 ## SARIF upload fails with `Resource not accessible by integration`
 
@@ -36,6 +39,13 @@
 
 - **Cause:** the name is listed in `env-vars` but missing from the Environment.
 - **Fix:** add the variable to the Environment named in `environment`.
+
+## A variable is empty although it exists in the Environment
+
+- **Cause:** the value was created as an Environment **secret**, but the workflow reads it as a **variable**
+  (or the other way round); `vars.*` never sees secrets.
+- **Fix:** check the Kind column in [Configuration](configuration.md#infrastructure-workflows-common-rules) and
+  recreate the value under **Environment variables** or **Environment secrets** accordingly.
 
 ## `ENV_SECRETS line N: ...`
 
