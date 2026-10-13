@@ -18,7 +18,8 @@
 
 ## Scorecard: `workflow verification failed` when publishing
 
-- **Cause:** publishing from `scorecard.yml` works (this repository publishes through it), but the Scorecard API
+- **Cause:** publishing from `scorecard.yml` works, both from this repository and from another repository of the
+  organization ([images](https://github.com/sogeor/images) publishes through it), but the Scorecard API
   also checks the **caller** workflow file: it must not set top-level `env:` or `defaults:`, must not grant write
   permissions at workflow level (use `permissions: {}` and grant per job), and only the job that calls
   `scorecard.yml` may have `id-token: write`.
