@@ -6,8 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
-- Troubleshooting: Scorecard publishing from `scorecard.yml` is confirmed to work; the entry lists the
-  requirements for the caller workflow instead of suggesting that reusable workflows are rejected.
+- Troubleshooting: Scorecard publishing from `scorecard.yml` is confirmed to work, from this repository and
+  from another repository of the organization; the entry lists the requirements for the caller workflow
+  instead of suggesting that reusable workflows are rejected.
 
 ### Added
 
