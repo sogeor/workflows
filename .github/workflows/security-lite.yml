@@ -46,7 +46,7 @@ env:
   # renovate: datasource=github-releases depName=aquasecurity/trivy
   TRIVY_VERSION: "0.75.0"
   TRIVY_SHA256: "c6e65abddb348e25f10549df887045629cf28cc72453cd1c63acb717316b3f3f"
-  SEMGREP_IMAGE: "docker.io/semgrep/semgrep:1.180.0-nonroot@sha256:fe51a9f5b261bd38d0f77bda48921c2ba27615ccb74ec2d6b0edbf3cf4e27d54"
+  SEMGREP_IMAGE: "docker.io/semgrep/semgrep:1.181.0-nonroot@sha256:4c37ae86cb02b5536f8c9ff6aabbc991944117e4678609e14e0f19a2bd7ea879"
   CHECKOV_IMAGE: "docker.io/bridgecrew/checkov:3.3.29@sha256:3cc125b5337717b7303dbddd4e79374c120687b5ff6a24f9abdad56b562469f3"
 
 jobs:
