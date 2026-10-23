@@ -1,0 +1,8 @@
+name: self-pr-title
+on:
+  pull_request:
+    types: [edited, opened, reopened, synchronize]
+permissions: {pull-requests: read}
+jobs:
+  check:
+    uses: ./.github/workflows/pr-title.yml
