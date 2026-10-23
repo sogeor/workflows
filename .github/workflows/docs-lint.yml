@@ -1,0 +1,45 @@
+name: docs-lint
+on: { workflow_call: {} }
+permissions: { contents: read }
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: markdownlint
+        uses: DavidAnson/markdownlint-cli2-action@v19
+        with: { globs: "**/*.md" }
+      - name: REUSE compliance (license and copyright of every file)
+        uses: fsfe/reuse-action@v5
+      - name: Required community files
+        run: |
+          rc=0
+          for f in .github/CODEOWNERS .release-please-manifest.json CHANGELOG.md LICENSE LICENSES/LicenseRef-Sogeor-1.0.txt README.md REUSE.toml release-please-config.json; do
+            [ -f "$f" ] || { echo "::error::Missing $f"; rc=1; }
+          done
+          exit $rc
+      - name: README structure (Standard Readme order)
+        shell: python3 {0}
+        run: |
+          import re, sys
+          text = open("README.md", encoding="utf-8").read()
+          if "{{" in text:
+              print("::error file=README.md::Template placeholders {{…}} are left in README.md"); sys.exit(1)
+          heads = [h.strip() for h in re.findall(r"^## (.+)$", text, re.M)]
+          order = ["Table of Contents", "Security", "Background", "Install", "Usage",
+                   "API", "Maintainers", "Thanks", "Contributing", "License"]
+          required = {"Install", "Usage", "Contributing", "License"}
+          if text.count("\n") > 100:
+              required.add("Table of Contents")
+          missing = sorted(required - set(heads))
+          known = [h for h in heads if h in order]
+          wrong = known != sorted(known, key=order.index)
+          if not text.lstrip().startswith(("#", "<!--")):
+              print("::error file=README.md::README must start with the title"); sys.exit(1)
+          if missing:
+              print(f"::error file=README.md::Missing sections: {', '.join(missing)}")
+          if known and known[-1] != "License":
+              print("::error file=README.md::'License' must be the last section")
+          if wrong:
+              print(f"::error file=README.md::Sections out of Standard Readme order: {known}")
+          sys.exit(1 if (missing or wrong or (known and known[-1] != 'License')) else 0)

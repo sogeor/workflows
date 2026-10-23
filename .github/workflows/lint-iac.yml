@@ -1,0 +1,27 @@
+name: lint-iac
+on: { workflow_call: {} }
+permissions: { contents: read }
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: gitleaks
+        env: { GITLEAKS_VERSION: 8.30.1 }
+        run: |
+          base=https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}
+          curl -fsSLO "$base/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -fsSLO "$base/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          sha256sum --check --ignore-missing "gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          tar xzf "gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" gitleaks
+          ./gitleaks git --redact --verbose --exit-code 1 .
+      - run: pipx install yamllint && yamllint -c .yamllint.yaml .
+      - uses: aquasecurity/trivy-action@v0.36.0
+        with: { scan-type: config, exit-code: "1", severity: "HIGH,CRITICAL" }
+      - name: kubeconform (if manifests exist)
+        run: |
+          [ -d clusters ] || [ -d infrastructure ] || exit 0
+          curl -fsSL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar xz
+          find . -name '*.yaml' ! -name '*.sops.yaml' ! -path '*/flux-system/*' ! -path './.github/*' -print0 \
+            | xargs -0 ./kubeconform -strict -ignore-missing-schemas -summary

@@ -1,0 +1,10 @@
+name: lint
+on:
+  push: { branches: [master] }
+  pull_request: {}
+permissions: { contents: read }
+jobs:
+  iac:
+    uses: ./.github/workflows/lint-iac.yml
+  docs:
+    uses: ./.github/workflows/docs-lint.yml

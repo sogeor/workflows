@@ -1,0 +1,27 @@
+name: release
+on:
+  workflow_call:
+    outputs:
+      released: { value: "${{ jobs.release-please.outputs.released }}" }
+      tag: { value: "${{ jobs.release-please.outputs.tag }}" }
+      version: { value: "${{ jobs.release-please.outputs.version }}" }
+permissions: { contents: read }
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      released: ${{ steps.rp.outputs.release_created }}
+      tag: ${{ steps.rp.outputs.tag_name }}
+      version: ${{ steps.rp.outputs.version }}
+    steps:
+      - uses: actions/create-github-app-token@v1
+        id: app
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+      - uses: googleapis/release-please-action@v4
+        id: rp
+        with:
+          token: ${{ steps.app.outputs.token }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
