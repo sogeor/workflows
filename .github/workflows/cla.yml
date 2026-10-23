@@ -2,7 +2,7 @@
 name: cla
 on:
   issue_comment: { types: [created] }
-  pull_request_target: { types: [opened, closed, synchronize] }
+  pull_request_target: { types: [opened, synchronize] }
 permissions:
   actions: write
   contents: read
@@ -33,4 +33,5 @@ jobs:
           remote-organization-name: sogeor
           remote-repository-name: cla
           branch: master
+          lock-pullrequest-aftermerge: false
           allowlist: ${{ vars.CLA_ALLOWLIST }}
