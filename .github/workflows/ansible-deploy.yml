@@ -4,7 +4,7 @@ on:
     inputs:
       ansible-core-version:
         type: string
-        default: "2.19.3"
+        default: "2.21.5"
       check:
         description: Run in check mode (no changes)
         type: boolean

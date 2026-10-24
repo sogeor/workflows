@@ -26,14 +26,24 @@ Report vulnerabilities privately as described in the [security policy](https://g
 
 ## Background
 
-Keeping CI in one repository means a fix or a version bump lands everywhere at once. Callers pin the major tag `v1`; it moves to the latest `v1.x.y` release after each release. Breaking changes get a new major tag.
+Keeping CI in one repository means a fix or a version bump is written once. Callers pin every workflow to a commit SHA and keep the release in a comment:
+
+```yaml
+uses: sogeor/workflows/.github/workflows/lint-iac.yml@<commit SHA> # v1.2.0
+```
+
+After each release Renovate opens a pull request in every repository that uses these workflows and merges it when the required checks pass. Tags are immutable: a release is never moved or rewritten. Breaking changes get a new major version.
 
 | Workflow | Purpose |
 |---|---|
+| `ansible-deploy.yml` | runs Ansible playbooks against the inventory from `sogeor/tofu` with the CI SSH certificate; masks server addresses in the log |
+| `ansible-lint.yml` | ansible-lint and syntax check for pull requests; needs no secrets |
 | `docs-lint.yml` | markdownlint, REUSE compliance, required files, README section order |
 | `lint-iac.yml` | yamllint, gitleaks and Trivy config scan |
 | `pr-title.yml` | Conventional Commits check of the pull request title |
 | `release.yml` | release-please through the `sogeor-release-bot` GitHub App; outputs `released`, `tag`, `version` |
+| `tofu-deploy.yml` | OpenTofu plan with read-only credentials, then apply of that saved plan after approval in the `production` environment |
+| `tofu-plan-pr.yml` | OpenTofu plan for pull requests from branches of the repository, posted as a comment |
 
 ## Install
 
@@ -47,11 +57,13 @@ Nothing to install. The organization must provide:
 ```yaml
 jobs:
   lint:
-    uses: sogeor/workflows/.github/workflows/docs-lint.yml@v1
+    uses: sogeor/workflows/.github/workflows/docs-lint.yml@<commit SHA> # v1.2.0
   release:
-    uses: sogeor/workflows/.github/workflows/release.yml@v1
+    uses: sogeor/workflows/.github/workflows/release.yml@<commit SHA> # v1.2.0
     secrets: inherit
 ```
+
+Write the release tag first (`@v1.2.0`), then pin it with `sogeor-pin-actions` or let Renovate open the pinning pull request; never leave a tag in `uses:`.
 
 Use the `release` outputs to run publishing jobs only when a release was created:
 
