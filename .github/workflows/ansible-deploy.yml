@@ -1,0 +1,110 @@
+name: ansible-deploy
+on:
+  workflow_call:
+    inputs:
+      ansible-core-version:
+        type: string
+        default: "2.19.3"
+      check:
+        description: Run in check mode (no changes)
+        type: boolean
+        default: false
+      environment:
+        description: GitHub environment that holds the secrets
+        type: string
+        default: production
+      playbooks:
+        description: Space-separated playbooks
+        type: string
+        default: site.yml status.yml
+      sops-version:
+        type: string
+        default: "3.10.2"
+      tofu-version:
+        type: string
+        default: "1.10.6"
+permissions: { contents: read }
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    concurrency: { group: ansible-deploy, cancel-in-progress: false }
+    env:
+      ANSIBLE_FORCE_COLOR: "1"
+      ANSIBLE_HOST_KEY_CHECKING: "True"
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+      TF_IN_AUTOMATION: "1"
+      TF_INPUT: "0"
+      TF_VAR_state_passphrase: ${{ secrets.TF_VAR_state_passphrase }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with: { path: ansible, persist-credentials: false }
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          # Fixed source: the inventory always comes from the default branch of sogeor/tofu
+          repository: sogeor/tofu
+          ref: master
+          path: tofu
+          persist-credentials: false
+      - uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f # v1
+        with:
+          tofu_version: ${{ inputs.tofu-version }}
+          tofu_wrapper: false
+
+      - name: sops
+        env: { V: "${{ inputs.sops-version }}" }
+        run: |
+          base=https://github.com/getsops/sops/releases/download/v$V
+          curl -fsSLO "$base/sops-v$V.linux.amd64"
+          curl -fsSLO "$base/sops-v$V.checksums.txt"
+          sha256sum --check --ignore-missing "sops-v$V.checksums.txt"
+          sudo install -m 0755 "sops-v$V.linux.amd64" /usr/local/bin/sops
+          rm -f "sops-v$V.linux.amd64" "sops-v$V.checksums.txt"
+
+      - name: Ansible
+        env: { ANSIBLE_CORE_VERSION: "${{ inputs.ansible-core-version }}" }
+        run: |
+          pipx install "ansible-core==${ANSIBLE_CORE_VERSION}"
+          ansible-galaxy collection install -r ansible/requirements.yml
+
+      - name: SSH key, certificate and known hosts
+        env:
+          CI_SSH_CERT: ${{ secrets.CI_SSH_CERT }}
+          CI_SSH_KEY: ${{ secrets.CI_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.KNOWN_HOSTS }}
+        run: |
+          install -d -m 0700 ~/.ssh
+          # Same paths as group_vars/all/main.yml uses on the workstation
+          printf '%s\n' "$CI_SSH_KEY"  > ~/.ssh/sogeor_ansible
+          printf '%s\n' "$CI_SSH_CERT" > ~/.ssh/sogeor_ansible-cert.pub
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 0600 ~/.ssh/sogeor_ansible ~/.ssh/known_hosts
+          ssh-keygen -Lf ~/.ssh/sogeor_ansible-cert.pub | grep -E 'Valid|Principals' -A1
+
+      - name: Inventory from tofu
+        run: |
+          tofu -chdir=tofu/servers init -no-color >/dev/null
+          cd ansible
+          # Hide server addresses in the public log
+          ansible-inventory --list \
+            | jq -r '._meta.hostvars[].ansible_host // empty' \
+            | while read -r ip; do echo "::add-mask::$ip"; done
+          ansible-inventory --graph
+
+      - name: Playbooks
+        working-directory: ansible
+        env:
+          CHECK: ${{ inputs.check && '--check' || '' }}
+          PLAYBOOKS: ${{ inputs.playbooks }}
+        run: |
+          for p in $PLAYBOOKS; do
+            echo "::group::$p"
+            ansible-playbook $CHECK "$p"
+            echo "::endgroup::"
+          done
+
+      - if: always()
+        name: Remove credentials
+        run: rm -f ~/.ssh/sogeor_ansible ~/.ssh/sogeor_ansible-cert.pub
