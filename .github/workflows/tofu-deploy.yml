@@ -75,7 +75,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
       # The plan file is encrypted by OpenTofu (plan { enforced = true }), so a public artifact is safe
       - if: steps.plan.outputs.changed == 'true'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: tfplan-${{ github.run_id }}
           path: ${{ inputs.working-directory }}/tfplan
@@ -102,7 +102,7 @@ jobs:
         with: { persist-credentials: false }
       - uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f # v1
         with: { tofu_version: "${{ inputs.tofu-version }}", tofu_wrapper: false }
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: tfplan-${{ github.run_id }}
           path: ${{ inputs.working-directory }}
