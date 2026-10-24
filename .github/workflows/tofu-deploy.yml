@@ -1,0 +1,112 @@
+name: tofu-deploy
+# plan (read-only credentials) -> human approval of that exact plan -> apply the saved plan.
+# A saved plan refuses to apply if the state changed after it was made.
+on:
+  workflow_call:
+    inputs:
+      apply-environment:
+        description: Environment with write credentials and required reviewers
+        type: string
+        default: production
+      plan-environment:
+        description: Environment with read-only credentials
+        type: string
+        default: plan
+      tofu-version:
+        type: string
+        default: "1.10.6"
+      working-directory:
+        description: OpenTofu stack directory
+        type: string
+        required: true
+    outputs:
+      changed:
+        description: "true when the plan had changes and they were applied"
+        value: ${{ jobs.plan.outputs.changed == 'true' && jobs.apply.result == 'success' }}
+permissions: { contents: read }
+env:
+  TF_IN_AUTOMATION: "1"
+  TF_INPUT: "0"
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.plan-environment }}
+    outputs:
+      changed: ${{ steps.plan.outputs.changed }}
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+      TF_VAR_state_passphrase: ${{ secrets.TF_VAR_state_passphrase }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - uses: opentofu/setup-opentofu@v1
+        with: { tofu_version: "${{ inputs.tofu-version }}", tofu_wrapper: false }
+      - run: tofu init -no-color
+      - id: plan
+        name: tofu plan
+        run: |
+          set +e
+          # Read-only credentials cannot write the lock file; apply takes the lock
+          tofu plan -no-color -lock=false -detailed-exitcode -out=tfplan
+          rc=$?
+          set -e
+          case "$rc" in
+            0) echo "changed=false" >> "$GITHUB_OUTPUT" ;;
+            2) echo "changed=true" >> "$GITHUB_OUTPUT" ;;
+            *) exit "$rc" ;;
+          esac
+      - name: Plan summary
+        run: |
+          {
+            echo "### OpenTofu plan: \`${{ inputs.working-directory }}\`"
+            echo
+            echo "Commit \`${GITHUB_SHA::7}\`. Approving the deployment applies exactly this plan."
+            echo
+            echo '```text'
+            tofu show -no-color tfplan
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      # The plan file is encrypted by OpenTofu (plan { enforced = true }), so a public artifact is safe
+      - if: steps.plan.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ github.run_id }}
+          path: ${{ inputs.working-directory }}/tfplan
+          retention-days: 1
+          if-no-files-found: error
+
+  apply:
+    needs: plan
+    if: needs.plan.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.apply-environment }}
+    concurrency: { group: "tofu-apply-${{ inputs.working-directory }}", cancel-in-progress: false }
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+      TF_VAR_state_passphrase: ${{ secrets.TF_VAR_state_passphrase }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - uses: opentofu/setup-opentofu@v1
+        with: { tofu_version: "${{ inputs.tofu-version }}", tofu_wrapper: false }
+      - uses: actions/download-artifact@v4
+        with:
+          name: tfplan-${{ github.run_id }}
+          path: ${{ inputs.working-directory }}
+      - run: tofu init -no-color
+      - name: tofu apply (saved plan)
+        run: tofu apply -no-color -lock-timeout=5m tfplan
+      - if: always()
+        run: rm -f tfplan

@@ -1,0 +1,32 @@
+name: ansible-lint
+# Checks for pull requests; needs no secrets and no access to the servers.
+on:
+  workflow_call:
+    inputs:
+      ansible-core-version:
+        type: string
+        default: "2.19.3"
+      ansible-lint-version:
+        type: string
+        default: "25.9.2"
+      playbooks:
+        type: string
+        default: site.yml status.yml
+permissions: { contents: read }
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - name: Install
+        run: |
+          pipx install "ansible-core==${{ inputs.ansible-core-version }}"
+          pipx inject ansible-core "ansible-lint==${{ inputs.ansible-lint-version }}" --include-apps
+          ansible-galaxy collection install -r requirements.yml
+      - name: Syntax check
+        env: { PLAYBOOKS: "${{ inputs.playbooks }}" }
+        # Static inventory: the tofu inventory needs secrets
+        run: for p in $PLAYBOOKS; do ansible-playbook -i localhost, --syntax-check "$p"; done
+      - name: ansible-lint
+        run: ansible-lint

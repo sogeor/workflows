@@ -1,0 +1,66 @@
+name: tofu-plan-pr
+# Plan for pull requests from branches of the same repository, posted as a PR comment.
+# Fork pull requests are skipped: GitHub gives them no secrets.
+on:
+  workflow_call:
+    inputs:
+      plan-environment:
+        type: string
+        default: plan
+      tofu-version:
+        type: string
+        default: "1.10.6"
+      working-directory:
+        type: string
+        required: true
+permissions: { contents: read }
+jobs:
+  plan:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.plan-environment }}
+    permissions: { contents: read, pull-requests: write }
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+      TF_IN_AUTOMATION: "1"
+      TF_INPUT: "0"
+      TF_VAR_state_passphrase: ${{ secrets.TF_VAR_state_passphrase }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - uses: opentofu/setup-opentofu@v1
+        with: { tofu_version: "${{ inputs.tofu-version }}", tofu_wrapper: false }
+      - run: tofu init -no-color
+      - id: plan
+        run: |
+          set +e
+          tofu plan -no-color -lock=false -detailed-exitcode -out=tfplan > plan.txt 2>&1
+          echo "rc=$?" >> "$GITHUB_OUTPUT"
+          set -e
+          [ -f tfplan ] && tofu show -no-color tfplan > show.txt || cp plan.txt show.txt
+          rm -f tfplan
+      - name: Comment on the pull request
+        env:
+          DIR: ${{ inputs.working-directory }}
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          RC: ${{ steps.plan.outputs.rc }}
+        run: |
+          marker="<!-- tofu-plan:$DIR -->"
+          case "$RC" in 0) status="No changes";; 2) status="Changes";; *) status="Plan failed";; esac
+          body="$(printf '%s\n### OpenTofu plan: `%s` — %s\n\nCommit `%s`. For review only: after merge a new plan is made and applied only after approval.\n\n<details><summary>Plan</summary>\n\n```text\n%s\n```\n</details>\n' \
+            "$marker" "$DIR" "$status" "${GITHUB_SHA::7}" "$(head -c 60000 show.txt)")"
+          id="$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
+                --jq ".[] | select(.body | startswith(\"$marker\")) | .id" | head -1)"
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -f body="$body" >/dev/null
+          else
+            gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -f body="$body" >/dev/null
+          fi
+          [ "$RC" = 0 ] || [ "$RC" = 2 ]
