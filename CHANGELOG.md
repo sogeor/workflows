@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/sogeor/workflows/compare/v1.1.1...v1.1.2) (2026-10-24)
+
+
+### Fixed
+
+* allow README placeholders in the template repository ([#18](https://github.com/sogeor/workflows/issues/18)) ([f2cd914](https://github.com/sogeor/workflows/commit/f2cd914d920983f7e3b99eaafb47786389caff01))
+
 ## [1.1.1](https://github.com/sogeor/workflows/compare/v1.1.0...v1.1.1) (2026-10-24)
 
 
