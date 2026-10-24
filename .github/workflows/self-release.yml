@@ -1,6 +1,6 @@
 name: self-release
-on: {push: {branches: [master]}}
-permissions: {contents: read}
+on: { push: { branches: [master] } }
+permissions: { contents: read }
 jobs:
   release:
     uses: ./.github/workflows/release.yml
@@ -16,10 +16,14 @@ jobs:
           app-id: ${{ vars.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with: {token: "${{ steps.app.outputs.token }}"}
+        with:
+          token: ${{ steps.app.outputs.token }}
+          fetch-depth: 0
+          fetch-tags: true
       - env:
           TAG: ${{ needs.release.outputs.tag }}
         run: |
+          git fetch --force origin "refs/tags/${TAG}:refs/tags/${TAG}"
           MAJOR="${TAG%%.*}"
-          git tag -f "$MAJOR" "$TAG"
+          git tag -f "$MAJOR" "${TAG}^{commit}"
           git push -f origin "refs/tags/$MAJOR"
