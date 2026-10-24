@@ -13,7 +13,10 @@ for f in "${files[@]}"; do
     [[ "$tag" =~ ^[0-9a-f]{40}$ ]] && continue
     key="$repo@$tag"
     if [ -z "${cache[$key]:-}" ]; then
-      cache[$key]="$(gh api "repos/${repo%%/.github*}/commits/$tag" --jq .sha)"
+      # Sub-path actions (github/codeql-action/upload-sarif) live in owner/repo
+      api_repo="$(cut -d/ -f1,2 <<<"$repo")"
+      cache[$key]="$(gh api "repos/$api_repo/commits/$tag" --jq .sha)" \
+        || { echo "cannot resolve $key" >&2; exit 1; }
     fi
     sha="${cache[$key]}"
     sed -i -E "s#uses: ${repo}@${tag}([[:space:]]*\$|[[:space:]]+\#.*\$)#uses: ${repo}@${sha} \# ${tag}#" "$f"
