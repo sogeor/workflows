@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.3](https://github.com/sogeor/workflows/compare/v1.1.2...v1.1.3) (2026-10-24)
+
+
+### Fixed
+
+* align ansible-core and ansible-lint versions with the workstation ([#29](https://github.com/sogeor/workflows/issues/29)) ([2d878b3](https://github.com/sogeor/workflows/commit/2d878b3b57046523a76b014181d223a3dd44ae73))
+
 ## [1.1.2](https://github.com/sogeor/workflows/compare/v1.1.1...v1.1.2) (2026-10-24)
 
 
