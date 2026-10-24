@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/sogeor/workflows/compare/v1.1.0...v1.1.1) (2026-10-24)
+
+
+### Fixed
+
+* fetch the release tag before moving the major tag ([#13](https://github.com/sogeor/workflows/issues/13)) ([70317ff](https://github.com/sogeor/workflows/commit/70317ff03d35ef0f85365b44f9fec2360f8ce147))
+
 ## [1.1.0](https://github.com/sogeor/workflows/compare/v1.0.0...v1.1.0) (2026-10-24)
 
 
