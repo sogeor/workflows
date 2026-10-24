@@ -62,9 +62,10 @@ jobs:
             *) exit "$rc" ;;
           esac
       - name: Plan summary
+        env: { WORKING_DIRECTORY: "${{ inputs.working-directory }}" }
         run: |
           {
-            echo "### OpenTofu plan: \`${{ inputs.working-directory }}\`"
+            echo "### OpenTofu plan: \`${WORKING_DIRECTORY}\`"
             echo
             echo "Commit \`${GITHUB_SHA::7}\`. Approving the deployment applies exactly this plan."
             echo

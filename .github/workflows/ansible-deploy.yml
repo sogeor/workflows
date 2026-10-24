@@ -20,12 +20,6 @@ on:
       sops-version:
         type: string
         default: "3.10.2"
-      tofu-ref:
-        type: string
-        default: master
-      tofu-repository:
-        type: string
-        default: sogeor/tofu
       tofu-version:
         type: string
         default: "1.10.6"
@@ -45,15 +39,16 @@ jobs:
       TF_INPUT: "0"
       TF_VAR_state_passphrase: ${{ secrets.TF_VAR_state_passphrase }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with: { path: ansible, persist-credentials: false }
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          repository: ${{ inputs.tofu-repository }}
-          ref: ${{ inputs.tofu-ref }}
+          # Fixed source: the inventory always comes from the default branch of sogeor/tofu
+          repository: sogeor/tofu
+          ref: master
           path: tofu
           persist-credentials: false
-      - uses: opentofu/setup-opentofu@v1
+      - uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f # v1
         with:
           tofu_version: ${{ inputs.tofu-version }}
           tofu_wrapper: false
@@ -69,8 +64,9 @@ jobs:
           rm -f "sops-v$V.linux.amd64" "sops-v$V.checksums.txt"
 
       - name: Ansible
+        env: { ANSIBLE_CORE_VERSION: "${{ inputs.ansible-core-version }}" }
         run: |
-          pipx install "ansible-core==${{ inputs.ansible-core-version }}"
+          pipx install "ansible-core==${ANSIBLE_CORE_VERSION}"
           ansible-galaxy collection install -r ansible/requirements.yml
 
       - name: SSH key, certificate and known hosts

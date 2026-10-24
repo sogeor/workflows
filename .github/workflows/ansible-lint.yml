@@ -17,12 +17,15 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with: { persist-credentials: false }
       - name: Install
+        env:
+          ANSIBLE_CORE_VERSION: ${{ inputs.ansible-core-version }}
+          ANSIBLE_LINT_VERSION: ${{ inputs.ansible-lint-version }}
         run: |
-          pipx install "ansible-core==${{ inputs.ansible-core-version }}"
-          pipx inject ansible-core "ansible-lint==${{ inputs.ansible-lint-version }}" --include-apps
+          pipx install "ansible-core==${ANSIBLE_CORE_VERSION}"
+          pipx inject ansible-core "ansible-lint==${ANSIBLE_LINT_VERSION}" --include-apps
           ansible-galaxy collection install -r requirements.yml
       - name: Syntax check
         env: { PLAYBOOKS: "${{ inputs.playbooks }}" }
