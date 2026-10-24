@@ -5,10 +5,10 @@ on:
     inputs:
       ansible-core-version:
         type: string
-        default: "2.19.3"
+        default: "2.21.5"
       ansible-lint-version:
         type: string
-        default: "25.9.2"
+        default: "26.10.1"
       playbooks:
         type: string
         default: site.yml status.yml
