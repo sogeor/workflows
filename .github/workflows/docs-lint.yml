@@ -19,6 +19,7 @@ jobs:
           done
           exit $rc
       - name: README structure (Standard Readme order)
+        if: ${{ !github.event.repository.is_template }}
         shell: python3 {0}
         run: |
           import re, sys
