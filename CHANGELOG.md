@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/sogeor/workflows/compare/v1.0.0...v1.1.0) (2026-10-24)
+
+
+### Added
+
+* add reusable tofu plan/apply and ansible deploy and lint workflows ([#9](https://github.com/sogeor/workflows/issues/9)) ([df04d93](https://github.com/sogeor/workflows/commit/df04d93f7cab21f3c9b65973c567a3cb7c394eec))
+
 ## 1.0.0 (2026-10-23)
 
 
