@@ -35,7 +35,7 @@ uses: sogeor/workflows/.github/workflows/lint-iac.yml@<commit SHA> # v1.2.0
 After each release Renovate opens a pull request in every repository that uses these workflows and merges it when the required checks pass. Tags are immutable: a release is never moved or rewritten. Breaking changes get a new major version.
 
 | Workflow | Purpose |
-|---|---|
+| --- | --- |
 | `ansible-deploy.yml` | runs Ansible playbooks against the inventory from `sogeor/tofu` with the CI SSH certificate; masks server addresses in the log |
 | `ansible-lint.yml` | ansible-lint and syntax check for pull requests; needs no secrets |
 | `docs-lint.yml` | markdownlint, REUSE compliance, required files, README section order |
