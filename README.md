@@ -57,11 +57,13 @@ Nothing to install. The organization must provide:
 ```yaml
 jobs:
   lint:
-    uses: sogeor/workflows/.github/workflows/docs-lint.yml@v1
+    uses: sogeor/workflows/.github/workflows/docs-lint.yml@<commit SHA> # v1.2.0
   release:
-    uses: sogeor/workflows/.github/workflows/release.yml@v1
+    uses: sogeor/workflows/.github/workflows/release.yml@<commit SHA> # v1.2.0
     secrets: inherit
 ```
+
+Write the release tag first (`@v1.2.0`), then pin it with `sogeor-pin-actions` or let Renovate open the pinning pull request; never leave a tag in `uses:`.
 
 Use the `release` outputs to run publishing jobs only when a release was created:
 
