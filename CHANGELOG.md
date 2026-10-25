@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.3](https://github.com/sogeor/workflows/compare/v1.3.2...v1.3.3) (2026-10-25)
+
+
+### Fixed
+
+* install Ansible collections without the Galaxy cache ([#43](https://github.com/sogeor/workflows/issues/43)) ([200cedb](https://github.com/sogeor/workflows/commit/200cedb9191fde42cc94d283259db7ca117a2fe7))
+
 ## [1.3.2](https://github.com/sogeor/workflows/compare/v1.3.1...v1.3.2) (2026-10-25)
 
 
