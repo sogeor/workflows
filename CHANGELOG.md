@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/sogeor/workflows/compare/v1.3.0...v1.3.1) (2026-10-25)
+
+
+### Fixed
+
+* install the pinned ansible-core over the runner copy ([#39](https://github.com/sogeor/workflows/issues/39)) ([700ca32](https://github.com/sogeor/workflows/commit/700ca325ccf07391a452e68f9314c690a4c134bb))
+
 ## [1.3.0](https://github.com/sogeor/workflows/compare/v1.2.0...v1.3.0) (2026-10-25)
 
 
