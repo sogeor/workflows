@@ -23,9 +23,13 @@ jobs:
         env:
           ANSIBLE_CORE_VERSION: ${{ inputs.ansible-core-version }}
           ANSIBLE_LINT_VERSION: ${{ inputs.ansible-lint-version }}
+          PIPX_BIN_DIR: ${{ runner.temp }}/pipx/bin
+          PIPX_HOME: ${{ runner.temp }}/pipx
         run: |
-          # --force: runner images ship their own ansible-core in pipx
-          pipx install --force "ansible-core==${ANSIBLE_CORE_VERSION}"
+          # Own pipx home: the runner image ships its own ansible-core in a root-owned /opt/pipx.
+          export PATH="$PIPX_BIN_DIR:$PATH"
+          echo "$PIPX_BIN_DIR" >> "$GITHUB_PATH"
+          pipx install "ansible-core==${ANSIBLE_CORE_VERSION}"
           pipx inject ansible-core "ansible-lint==${ANSIBLE_LINT_VERSION}" --include-apps
           ansible --version | head -1
           ansible-galaxy collection install -r requirements.yml
