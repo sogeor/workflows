@@ -41,7 +41,7 @@ After each release Renovate opens a pull request in every repository that uses t
 | `docs-lint.yml` | markdownlint, REUSE compliance, required files, README section order |
 | `lint-iac.yml` | yamllint, gitleaks and Trivy config scan |
 | `pr-title.yml` | Conventional Commits check of the pull request title |
-| `release.yml` | release-please through the `sogeor-release-bot` GitHub App; outputs `released`, `tag`, `version` |
+| `release.yml` | release-please through the `sogeor-release-bot` GitHub App; attaches a source archive with signed SLSA build provenance to each release; outputs `released`, `tag`, `version` |
 | `tofu-deploy.yml` | OpenTofu plan with read-only credentials, then apply of that saved plan after approval in the `production` environment |
 | `tofu-plan-pr.yml` | OpenTofu plan for pull requests from branches of the repository, posted as a comment |
 
@@ -59,8 +59,15 @@ jobs:
   lint:
     uses: sogeor/workflows/.github/workflows/docs-lint.yml@<commit SHA> # v1.2.0
   release:
+    permissions: { attestations: write, contents: read, id-token: write }
     uses: sogeor/workflows/.github/workflows/release.yml@<commit SHA> # v1.2.0
     secrets: inherit
+```
+
+The `release` job needs `attestations: write` and `id-token: write`: a reusable workflow cannot get more permissions than its caller. Each release gets `<repo>-<version>.tar.gz`, `SHA256SUMS`, the Sigstore bundle `*.sigstore.json` and the in-toto envelope `*.intoto.jsonl`. Verify an archive with:
+
+```bash
+gh attestation verify <repo>-<version>.tar.gz -R sogeor/<repo>
 ```
 
 Write the release tag first (`@v1.2.0`), then pin it with `sogeor-pin-actions` or let Renovate open the pinning pull request; never leave a tag in `uses:`.
