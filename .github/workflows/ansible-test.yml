@@ -32,8 +32,11 @@ jobs:
           MOLECULE_PLUGINS_VERSION: ${{ inputs.molecule-plugins-version }}
           MOLECULE_VERSION: ${{ inputs.molecule-version }}
         run: |
-          pipx install "ansible-core==${ANSIBLE_CORE_VERSION}"
-          pipx inject ansible-core "molecule==${MOLECULE_VERSION}" "molecule-plugins[docker]==${MOLECULE_PLUGINS_VERSION}" --include-apps
+          # --force: runner images ship their own ansible-core in pipx
+          pipx install --force "ansible-core==${ANSIBLE_CORE_VERSION}"
+          pipx inject ansible-core "molecule==${MOLECULE_VERSION}" --include-apps
+          pipx inject ansible-core "molecule-plugins[docker]==${MOLECULE_PLUGINS_VERSION}"
+          ansible --version | head -1
           ansible-galaxy collection install -r requirements.yml
           ansible-galaxy collection install "community.docker:==${COMMUNITY_DOCKER_VERSION}"
       - name: molecule test

@@ -24,8 +24,10 @@ jobs:
           ANSIBLE_CORE_VERSION: ${{ inputs.ansible-core-version }}
           ANSIBLE_LINT_VERSION: ${{ inputs.ansible-lint-version }}
         run: |
-          pipx install "ansible-core==${ANSIBLE_CORE_VERSION}"
+          # --force: runner images ship their own ansible-core in pipx
+          pipx install --force "ansible-core==${ANSIBLE_CORE_VERSION}"
           pipx inject ansible-core "ansible-lint==${ANSIBLE_LINT_VERSION}" --include-apps
+          ansible --version | head -1
           ansible-galaxy collection install -r requirements.yml
       - name: Syntax check
         env: { PLAYBOOKS: "${{ inputs.playbooks }}" }
