@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/sogeor/workflows/compare/v1.2.0...v1.3.0) (2026-10-25)
+
+
+### Added
+
+* add reusable Molecule test workflow ([#37](https://github.com/sogeor/workflows/issues/37)) ([9963ab0](https://github.com/sogeor/workflows/commit/9963ab03109441e36acc4789a8dc2abe8afc5de1))
+
 ## [1.2.0](https://github.com/sogeor/workflows/compare/v1.1.4...v1.2.0) (2026-10-25)
 
 
