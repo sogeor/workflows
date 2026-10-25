@@ -67,7 +67,7 @@ jobs:
         env: { ANSIBLE_CORE_VERSION: "${{ inputs.ansible-core-version }}" }
         run: |
           pipx install "ansible-core==${ANSIBLE_CORE_VERSION}"
-          ansible-galaxy collection install -r ansible/requirements.yml
+          ansible-galaxy collection install --no-cache -r ansible/requirements.yml
 
       - name: SSH key, certificate and known hosts
         env:
