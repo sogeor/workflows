@@ -38,6 +38,7 @@ After each release Renovate opens a pull request in every repository that uses t
 | --- | --- |
 | `ansible-deploy.yml` | runs Ansible playbooks against the inventory from `sogeor/tofu` with the CI SSH certificate; masks server addresses in the log |
 | `ansible-lint.yml` | ansible-lint and syntax check for pull requests; needs no secrets |
+| `ansible-test.yml` | Molecule scenario (`molecule test`: converge, idempotence, verify) in Docker containers with systemd; needs no secrets |
 | `docs-lint.yml` | markdownlint, REUSE compliance, required files, README section order |
 | `lint-iac.yml` | yamllint, gitleaks and Trivy config scan |
 | `pr-title.yml` | Conventional Commits check of the pull request title |
