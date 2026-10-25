@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/sogeor/workflows/compare/v1.1.4...v1.2.0) (2026-10-25)
+
+
+### Added
+
+* attach signed source archive to releases ([#35](https://github.com/sogeor/workflows/issues/35)) ([3e48b2b](https://github.com/sogeor/workflows/commit/3e48b2b0b7b49a0ab9e5845142dc13d7c3f045f1))
+
 ## [1.1.4](https://github.com/sogeor/workflows/compare/v1.1.3...v1.1.4) (2026-10-24)
 
 
