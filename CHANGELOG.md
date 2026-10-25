@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.2](https://github.com/sogeor/workflows/compare/v1.3.1...v1.3.2) (2026-10-25)
+
+
+### Fixed
+
+* install ansible-core into a runner-local pipx home ([#41](https://github.com/sogeor/workflows/issues/41)) ([c8df461](https://github.com/sogeor/workflows/commit/c8df461a51619a4b1cc536f4542ad26fe3a124aa))
+
 ## [1.3.1](https://github.com/sogeor/workflows/compare/v1.3.0...v1.3.1) (2026-10-25)
 
 
